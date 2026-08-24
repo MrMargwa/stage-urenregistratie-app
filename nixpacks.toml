@@ -1,5 +1,6 @@
 [variables]
 NIXPACKS_PHP_VERSION = '8.4'
+NIXPACKS_NODE_VERSION = '22'
 
 [phases.setup]
 nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip']
