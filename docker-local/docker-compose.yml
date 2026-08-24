@@ -9,7 +9,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - D:\_Development\projects\stage-urenregistratie-app:/var/www:cached
+      - C:\Stage Projecten\stage-urenregistratie-app:/var/www:cached
       - laravel_storage:/var/www/storage
       - /var/www/vendor   # container-only vendor, blijft bestaan voor composer
     depends_on:
@@ -21,7 +21,7 @@ services:
     container_name: stage_urenregistratie_app_mysql
     restart: always
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_DATABASE: stage_urenregistratie_app
       MYSQL_USER: stage_urenregistratie_app
