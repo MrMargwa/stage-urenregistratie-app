@@ -1,7 +1,12 @@
 <?php
 
+use App\Http\Controllers\WorkbookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
-});
+    return redirect()->to(auth()->check() ? '/admin' : '/admin/login');
+})->name('home');
+
+Route::get('/werkblad/download', WorkbookController::class.'@download')
+    ->middleware('auth')
+    ->name('workbook.download');

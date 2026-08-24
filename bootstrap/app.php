@@ -1,9 +1,11 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,4 +20,22 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
+            if ($request->isMethod('GET')
+                && ! $request->expectsJson()
+                && ! $request->is('livewire/*')) {
+                return redirect()->to(auth()->check() ? '/admin' : '/admin/login');
+            }
+
+            return null;
+        });
+
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return null;
+            }
+
+            return redirect()->guest('/admin/login');
+        });
     })->create();

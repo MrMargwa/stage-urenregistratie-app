@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\TimeEntry;
+use App\Services\WorkbookService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $workbooks = app(WorkbookService::class);
+
+        TimeEntry::saved(fn (TimeEntry $entry) => $workbooks->refreshQuietly($entry->user));
+        TimeEntry::deleted(fn (TimeEntry $entry) => $workbooks->refreshQuietly($entry->user));
     }
 }

@@ -13,12 +13,13 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TimeEntryResource extends Resource
 {
     protected static ?string $model = TimeEntry::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
     public static function form(Schema $schema): Schema
     {
@@ -28,6 +29,19 @@ class TimeEntryResource extends Resource
     public static function table(Table $table): Table
     {
         return TimeEntriesTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+
+        if (! $user?->isAdmin()) {
+            $query->where('user_id', $user?->id);
+        }
+
+        return $query;
     }
 
     public static function getRelations(): array
