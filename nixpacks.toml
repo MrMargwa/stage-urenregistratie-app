@@ -4,12 +4,14 @@ NIXPACKS_PHP_VERSION = '8.4'
 [phases.setup]
 nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip']
 
-[phases.build]
+[phases.install]
 cmds = [
     'composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist',
-    'npm ci --ignore-scripts',
-    'npm run build'
+    'npm ci --ignore-scripts'
 ]
+
+[phases.build]
+cmds = ['npm run build']
 
 [start]
 cmd = 'php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT'
