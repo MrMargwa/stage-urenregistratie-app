@@ -9,7 +9,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - C:\Stage Projecten\stage-urenregistratie-app:/var/www:cached
+      - D:\_Development\projects\stage-urenregistratie-app:/var/www:cached
+      # - C:\Stage Projecten\stage-urenregistratie-app:/var/www:cached
       - laravel_storage:/var/www/storage
       - /var/www/vendor   # container-only vendor, blijft bestaan voor composer
     depends_on:
