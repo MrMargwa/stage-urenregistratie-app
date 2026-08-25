@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('role', 20)->default('user')->index()->after('password');
             $table->string('theme_mode', 20)->default('dark')->after('role');
-            $table->string('accent_color', 20)->default('cyan')->after('theme_mode');
+            $table->string('accent_color', 20)->default('amber')->after('theme_mode');
         });
     }
 
