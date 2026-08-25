@@ -17,8 +17,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('role')->default('gebruiker');
-            $table->string('accent_color')->nullable();
+            $table->string('role', 20)->default('gebruiker')->index();
+            $table->string('theme_mode', 20)->default('dark');
+            $table->string('accent_color', 20)->nullable();
+            $table->timestamp('workbook_linked_at')->nullable();
+            $table->integer('target_hours')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
