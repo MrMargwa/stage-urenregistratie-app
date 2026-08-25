@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class AdminSeeder extends Seeder
 {
@@ -11,9 +12,10 @@ class AdminSeeder extends Seeder
     {
         $email = env('ADMIN_EMAIL');
         $password = env('ADMIN_PASSWORD');
+        $name = env('ADMIN_NAME', 'Admin');
 
         if (! $email || ! $password) {
-            $this->command?->warn('ADMIN_EMAIL of ADMIN_PASSWORD niet gezet — admin-user overgeslagen.');
+            $this->command?->info('ADMIN_EMAIL of ADMIN_PASSWORD niet gezet — seeder overgeslagen.');
 
             return;
         }
@@ -27,5 +29,7 @@ class AdminSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        $this->command?->info("Admin-user {$email} aangemaakt/bijgewerkt.");
     }
 }

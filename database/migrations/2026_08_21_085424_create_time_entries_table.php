@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('time_entries', function (Blueprint $table) {
             $table->id();
 
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+
             $table->date('date');
 
             $table->time('start_time');

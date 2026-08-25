@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries;
 
+use App\Enums\Role;
 use App\Filament\Admin\Resources\TimeEntries\Pages\CreateTimeEntry;
 use App\Filament\Admin\Resources\TimeEntries\Pages\EditTimeEntry;
 use App\Filament\Admin\Resources\TimeEntries\Pages\ListTimeEntries;
@@ -20,6 +21,12 @@ class TimeEntryResource extends Resource
     protected static ?string $model = TimeEntry::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
+
+    protected static ?string $navigationLabel = 'Tijdregistraties';
+
+    protected static ?string $modelLabel = 'Tijdregistratie';
+
+    protected static ?string $pluralModelLabel = 'Tijdregistraties';
 
     public static function form(Schema $schema): Schema
     {
@@ -46,9 +53,7 @@ class TimeEntryResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
