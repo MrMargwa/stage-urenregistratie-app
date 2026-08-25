@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TimeEntry extends Model
 {
     protected $fillable = [
+        'user_id',
         'date',
         'start_time',
         'end_time',
@@ -21,6 +23,11 @@ class TimeEntry extends Model
         'end_time' => 'datetime:H:i',
         'break_minutes' => 'integer',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function duration(): Attribute
     {

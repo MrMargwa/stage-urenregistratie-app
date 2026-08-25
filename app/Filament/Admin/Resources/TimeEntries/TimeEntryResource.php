@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries;
 
+use App\Enums\Role;
 use App\Filament\Admin\Resources\TimeEntries\Pages\CreateTimeEntry;
 use App\Filament\Admin\Resources\TimeEntries\Pages\EditTimeEntry;
 use App\Filament\Admin\Resources\TimeEntries\Pages\ListTimeEntries;
@@ -13,12 +14,19 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TimeEntryResource extends Resource
 {
     protected static ?string $model = TimeEntry::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+
+    protected static ?string $navigationLabel = 'Tijdregistraties';
+
+    protected static ?string $modelLabel = 'Tijdregistratie';
+
+    protected static ?string $pluralModelLabel = 'Tijdregistraties';
 
     public static function form(Schema $schema): Schema
     {
@@ -30,11 +38,22 @@ class TimeEntryResource extends Resource
         return TimeEntriesTable::configure($table);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+
+        if (! $user->getRoleEnum()->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
+    }
+
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array

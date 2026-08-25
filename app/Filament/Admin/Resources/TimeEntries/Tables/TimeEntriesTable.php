@@ -46,32 +46,42 @@ class TimeEntriesTable
                 SelectFilter::make('maand')
                     ->label('Maand')
                     ->options(fn () => TimeEntry::query()
-                        ->selectRaw("DISTINCT DATE_FORMAT(`date`, '%Y-%m') AS ym")
-                        ->orderBy('ym')
-                        ->pluck('ym')
-                        ->mapWithKeys(fn ($ym) => [
-                            $ym => Carbon::createFromFormat('Y-m', $ym)->locale('nl')->translatedFormat('F Y'),
+                        ->select('date')
+                        ->get()
+                        ->mapWithKeys(fn ($entry) => [
+                            $entry->date->format('Y-m') => $entry->date->locale('nl')->translatedFormat('F Y'),
                         ])
+                        ->unique()
+                        ->sort()
                         ->all())
                     ->query(function (Builder $query, array $data) {
                         if (filled($data['value'] ?? null)) {
-                            $query->whereRaw("DATE_FORMAT(`date`, '%Y-%m') = ?", [$data['value']]);
+                            $year = substr($data['value'], 0, 4);
+                            $month = substr($data['value'], 5, 2);
+                            $query->whereYear('date', $year)
+                                ->whereMonth('date', $month);
                         }
                     }),
 
                 SelectFilter::make('week')
                     ->label('Week')
                     ->options(fn () => TimeEntry::query()
-                        ->selectRaw('DISTINCT YEARWEEK(`date`, 3) AS yw')
-                        ->orderBy('yw')
-                        ->pluck('yw')
-                        ->mapWithKeys(fn ($yw) => [
-                            $yw => substr((string) $yw, 0, 4).' – week '.substr((string) $yw, 4),
+                        ->select('date')
+                        ->get()
+                        ->mapWithKeys(fn ($entry) => [
+                            $entry->date->format('o') . '-' . $entry->date->isoWeek() => $entry->date->format('o') . ' – week ' . $entry->date->isoWeek(),
                         ])
+                        ->unique()
+                        ->sort()
                         ->all())
                     ->query(function (Builder $query, array $data) {
                         if (filled($data['value'] ?? null)) {
-                            $query->whereRaw('YEARWEEK(`date`, 3) = ?', [$data['value']]);
+                            $parts = explode('-', $data['value']);
+                            $year = $parts[0];
+                            $week = $parts[1];
+                            $start = Carbon::now()->setISODate((int) $year, (int) $week)->startOfWeek();
+                            $end = $start->copy()->endOfWeek();
+                            $query->whereBetween('date', [$start, $end]);
                         }
                     }),
             ])
