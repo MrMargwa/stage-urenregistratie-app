@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Pages\Dashboard;
 use App\Filament\Admin\Pages\Settings;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
