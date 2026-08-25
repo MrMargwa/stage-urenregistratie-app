@@ -2,13 +2,15 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries\Pages;
 
+use App\Filament\Admin\Actions\SyncTimeEntriesAction;
+use App\Filament\Admin\Actions\WorkbookActions;
 use App\Filament\Admin\Resources\TimeEntries\TimeEntryResource;
 use App\Filament\Exports\TimeEntryExporter;
 use App\Models\TimeEntry;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ExportAction;
-use Filament\Notifications\Notification;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\Response;
 
@@ -19,26 +21,18 @@ class ListTimeEntries extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            ...WorkbookActions::forHeader(),
+
             ExportAction::make()
                 ->exporter(TimeEntryExporter::class)
+                ->formats([ExportFormat::Xlsx])
                 ->label('Exporteren')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('danger'),
 
-            Action::make('exportPdf')
-                ->label('Export PDF')
-                ->icon('heroicon-o-document-text')
-                ->color('gray')
-                ->action(fn () => $this->exportPdf()),
+            SyncTimeEntriesAction::make(),
 
-            Action::make('exportCsv')
-                ->label('Export CSV')
-                ->icon('heroicon-o-document-text')
-                ->color('gray')
-                ->action(fn () => $this->exportCsv()),
-
-            CreateAction::make()
-                ->color('primary'),
+            CreateAction::make(),
         ];
     }
 

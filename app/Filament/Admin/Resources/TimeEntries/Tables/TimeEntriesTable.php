@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries\Tables;
 
+use App\Filament\Admin\Resources\TimeEntries\TimeEntryResource;
 use App\Models\TimeEntry;
 use Carbon\Carbon;
 use Filament\Actions\BulkActionGroup;
@@ -18,6 +19,11 @@ class TimeEntriesTable
     {
         return $table
             ->columns([
+                TextColumn::make('user.name')
+                    ->label('Gebruiker')
+                    ->sortable()
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
+
                 TextColumn::make('date')
                     ->label('Datum')
                     ->date('d-m-Y'),
@@ -45,44 +51,30 @@ class TimeEntriesTable
             ->filters([
                 SelectFilter::make('maand')
                     ->label('Maand')
-                    ->options(fn () => TimeEntry::query()
-                        ->select('date')
-                        ->get()
-                        ->mapWithKeys(fn ($entry) => [
-                            $entry->date->format('Y-m') => $entry->date->locale('nl')->translatedFormat('F Y'),
-                        ])
-                        ->unique()
-                        ->sort()
-                        ->all())
+                    ->options(fn () => self::maandOpties())
                     ->query(function (Builder $query, array $data) {
-                        if (filled($data['value'] ?? null)) {
-                            $year = substr($data['value'], 0, 4);
-                            $month = substr($data['value'], 5, 2);
-                            $query->whereYear('date', $year)
-                                ->whereMonth('date', $month);
+                        $value = $data['value'] ?? null;
+
+                        if (! filled($value)) {
+                            return;
                         }
+
+                        [$from, $till] = self::maandBereik($value);
+                        $query->whereBetween('date', [$from, $till]);
                     }),
 
                 SelectFilter::make('week')
                     ->label('Week')
-                    ->options(fn () => TimeEntry::query()
-                        ->select('date')
-                        ->get()
-                        ->mapWithKeys(fn ($entry) => [
-                            $entry->date->format('o') . '-' . $entry->date->isoWeek() => $entry->date->format('o') . ' – week ' . $entry->date->isoWeek(),
-                        ])
-                        ->unique()
-                        ->sort()
-                        ->all())
+                    ->options(fn () => self::weekOpties())
                     ->query(function (Builder $query, array $data) {
-                        if (filled($data['value'] ?? null)) {
-                            $parts = explode('-', $data['value']);
-                            $year = $parts[0];
-                            $week = $parts[1];
-                            $start = Carbon::now()->setISODate((int) $year, (int) $week)->startOfWeek();
-                            $end = $start->copy()->endOfWeek();
-                            $query->whereBetween('date', [$start, $end]);
+                        $value = $data['value'] ?? null;
+
+                        if (! filled($value)) {
+                            return;
                         }
+
+                        [$from, $till] = self::weekBereik($value);
+                        $query->whereBetween('date', [$from, $till]);
                     }),
             ])
             ->recordActions([
@@ -93,5 +85,53 @@ class TimeEntriesTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /** @return array<string, string> */
+    protected static function maandOpties(): array
+    {
+        return TimeEntryResource::getEloquentQuery()
+            ->get(['date'])
+            ->sortBy('date')
+            ->unique(fn (TimeEntry $entry) => $entry->date->format('Y-m'))
+            ->mapWithKeys(fn (TimeEntry $entry) => [
+                $entry->date->format('Y-m') => $entry->date->locale('nl')->translatedFormat('F Y'),
+            ])
+            ->all();
+    }
+
+    /** @return array<string, string> */
+    protected static function weekOpties(): array
+    {
+        return TimeEntryResource::getEloquentQuery()
+            ->get(['date'])
+            ->sortBy('date')
+            ->unique(fn (TimeEntry $entry) => $entry->date->format('o-W'))
+            ->mapWithKeys(fn (TimeEntry $entry) => [
+                $entry->date->format('o-W') => $entry->date->format('o').' – week '.(int) $entry->date->format('W'),
+            ])
+            ->all();
+    }
+
+    /** @return array{0: string, 1: string} */
+    protected static function maandBereik(string $maand): array
+    {
+        $start = Carbon::createFromFormat('Y-m', $maand)->startOfDay();
+        $eind = (clone $start)->endOfMonth();
+
+        return [$start->toDateString(), $eind->toDateString()];
+    }
+
+    /** @return array{0: string, 1: string} */
+    protected static function weekBereik(string $week): array
+    {
+        [$jaar, $weeknummer] = explode('-', $week);
+
+        $start = Carbon::create()->setISODate((int) $jaar, (int) $weeknummer)
+            ->startOfWeek(Carbon::MONDAY)
+            ->startOfDay();
+        $eind = (clone $start)->addDays(6)->endOfDay();
+
+        return [$start->toDateString(), $eind->toDateString()];
     }
 }

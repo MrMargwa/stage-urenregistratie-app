@@ -1,18 +1,13 @@
 <?php
 
+use App\Http\Controllers\WorkbookController;
 use Illuminate\Support\Facades\Route;
 use Octopy\Filament\Palette\PaletteManager;
 
 Route::get('/', function () {
-    return redirect('/dashboard');
-});
+    return redirect()->to(auth()->check() ? '/admin' : '/admin/login');
+})->name('home');
 
-Route::post('/dashboard/palette/{theme}', function (string $theme, PaletteManager $manager) {
-    $palette = config("filament-palette.palette.{$theme}");
-
-    if ($palette) {
-        $manager->set($theme);
-    }
-
-    return redirect()->back();
-})->middleware(['web', 'auth'])->name('palette.apply');
+Route::get('/werkblad/download', WorkbookController::class.'@download')
+    ->middleware('auth')
+    ->name('workbook.download');

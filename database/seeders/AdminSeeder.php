@@ -23,10 +23,11 @@ class AdminSeeder extends Seeder
         User::updateOrCreate(
             ['email' => $email],
             [
-                'name' => $name,
-                'password' => Hash::make($password),
-                'role' => 'admin',
-            ],
+                'name' => env('ADMIN_NAME', 'Admin'),
+                'password' => $password,
+                'role' => User::ROLE_ADMIN,
+                'email_verified_at' => now(),
+            ]
         );
 
         $this->command?->info("Admin-user {$email} aangemaakt/bijgewerkt.");
