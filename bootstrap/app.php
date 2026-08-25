@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->isMethod('GET')
                 && ! $request->expectsJson()
                 && ! $request->is('livewire/*')) {
-                return redirect()->to(auth()->check() ? '/admin' : '/admin/login');
+                return redirect()->to(auth()->check() ? '/dashboard' : '/dashboard/login');
             }
 
             return null;
@@ -36,6 +36,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return redirect()->guest('/admin/login');
+            return redirect()->guest('/dashboard/login');
         });
     })->create();
