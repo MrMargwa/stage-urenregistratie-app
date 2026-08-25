@@ -7,9 +7,9 @@ nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip', 'php84Extension
 
 [phases.install]
 cmds = [
-    'composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist',
+    'composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts',
     'npm ci --ignore-scripts'
 ]
 
 [phases.build]
-cmds = ['npm run build']
+cmds = ['php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan package:discover --ansi && npm run build']
