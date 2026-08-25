@@ -20,7 +20,7 @@ class TimeEntryResource extends Resource
 {
     protected static ?string $model = TimeEntry::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
     protected static ?string $navigationLabel = 'Tijdregistraties';
 
@@ -44,8 +44,8 @@ class TimeEntryResource extends Resource
 
         $user = auth()->user();
 
-        if (! $user->getRoleEnum()->isAdmin()) {
-            $query->where('user_id', $user->id);
+        if (! $user?->isAdmin()) {
+            $query->where('user_id', $user?->id);
         }
 
         return $query;

@@ -11,7 +11,9 @@ class CreateTimeEntry extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['user_id'] = auth()->id();
+        if (! (auth()->user()?->isAdmin() ?? false)) {
+            $data['user_id'] = auth()->id();
+        }
 
         return $data;
     }

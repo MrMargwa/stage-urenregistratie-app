@@ -73,11 +73,39 @@ Log daarna in op `<jouw-domein>/admin`.
 - Migraties draaien bij elke containerstart (met wachtlus tot de database online is).
 - Exports werken direct (`QUEUE_CONNECTION=sync`, geen worker nodig).
 
+## Nieuwe functionaliteit & migratie-gedrag (aug 2026)
+
+De app is multi-user geworden. Wat er bij het deployen van deze versie met je bestaande data gebeurt:
+
+| Wijziging | Effect op bestaande data |
+|---|---|
+| Kolom `role` op `users` | Bestaande accounts krijgen default `user`. De `AdminSeeder` zet bij de start het account uit `ADMIN_EMAIL` netjes op `admin`. |
+| Kolom `user_id` op `time_entries` | Bestaande uren worden tijdens de migratie automatisch gekoppeld aan jouw admin-account (`ADMIN_EMAIL`), zodat niets zoekraakt of "eigenaarloos" wordt. |
+| Kolommen `theme_mode` + `accent_color` op `users` | Krijgen defaults (`dark` / `cyan`); gedrag verandert niet. |
+| Kolom `workbook_linked_at` op `users` | Nullable, geen effect op bestaande data. Gebruikers koppelen zelf hun Excel-werkblad. |
+
+**Let op:** het persoonlijke Excel-werkblad staat in de container-opslag (`storage/app/private`),
+die op Railway vluchtig is. Dat is bewust geen probleem: het werkblad wordt bij elke mutatie én
+bij het downloaden opnieuw uit de database gegenereerd, dus het is altijd actueel.
+
+**Regel voor toekomstige migraties:** altijd additief (nieuwe kolommen met `default()` of nullable,
+nieuwe tabellen). Nooit kolommen droppen of data herschrijven in een migratie — dan blijft
+deployen zonder dataverlies gegarandeerd.
+
+Nieuw sinds deze versie:
+
+- Gebruikersbeheer door admins (accounts aanmaken/bewerken; geen self-registration)
+- Iedereen ziet alleen eigen uren; admins zien alles
+- Instellingenpagina: account beheren + thema (donker/licht/systeem) en accentkleur
+- Excel-export (.xlsx) en **Excel-synchronisatie**: upload een bestand en de app werkt je uren bij,
+  maakt nieuwe aan en kan (optioneel) overtollige regels verwijderen
+
 ## Troubleshooting
 
 | Probleem | Oplossing |
 |---|---|
 | Inloggen lukt, maar daarna `403 Forbidden` op `/admin` | Het `User`-model implementeert het `FilamentUser`-contract niet — Filament weigert dan élke user in productie (lokaal met `APP_ENV=local` lijkt het te werken). Fix: `User extends Authenticatable implements FilamentUser` mét `canAccessPanel(): bool` (staat in de repo). |
+| `500 Internal Server Error` op `/admin/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
 | `Application failed to respond` op het domein | App draait niet (meer) of Railway routeert naar de verkeerde poort. Check: 1) deployment-logs — draait `artisan serve` en op welke poort? 2) app-service → **Settings → Networking** → domein → **target port** moet gelijk zijn aan de luisterpoort uit de logs (bijv. `8080`). 3) Stond de container midden in een herstart (crash-loop)? Zie de wachtlus-fix hieronder. |
 | Build-log noemt `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert Nixpacks. Staat die er niet in? Zet hem dan handmatig: app-service → **Settings** → **Build** → Builder → **Nixpacks**, en redeploy. |
 | `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Nixpacks koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste (lockfile heeft ≥8.4.1 nodig). Opgelost door `"php": "^8.4"` + install-fase met `--no-dev`. |
