@@ -5,12 +5,11 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\TextInput;
+use Filament\Schemas\Components\ToggleButtons;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -42,6 +41,17 @@ class Settings extends Page
         $this->form->fill(auth()->user()->only(['name', 'email', 'theme_mode', 'accent_color']));
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('save')
+                ->label('Opslaan')
+                ->icon('heroicon-o-check')
+                ->action('save')
+                ->keyBindings(['mod+s']),
+        ];
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -49,69 +59,60 @@ class Settings extends Page
             ->operation('edit')
             ->statePath('data')
             ->components([
-                Form::make([
-                    Section::make('Account')
-                        ->description('Beheer je accountgegevens.')
-                        ->schema([
-                            TextInput::make('name')
-                                ->label('Naam')
-                                ->required()
-                                ->maxLength(255),
+                Section::make('Account')
+                    ->description('Beheer je accountgegevens.')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Naam')
+                            ->required()
+                            ->maxLength(255),
 
-                            TextInput::make('email')
-                                ->label('E-mailadres')
-                                ->email()
-                                ->required()
-                                ->maxLength(255)
-                                ->unique(ignoreRecord: true),
+                        TextInput::make('email')
+                            ->label('E-mailadres')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true),
 
-                            TextInput::make('password')
-                                ->label('Nieuw wachtwoord')
-                                ->password()
-                                ->revealable()
-                                ->rule('min:8')
-                                ->nullable()
-                                ->same('password_confirmation')
-                                ->hintIcon('heroicon-m-information-circle', tooltip: 'Leeg laten om je huidige wachtwoord te behouden · minimaal 8 tekens'),
+                        TextInput::make('password')
+                            ->label('Nieuw wachtwoord')
+                            ->password()
+                            ->revealable()
+                            ->rule('min:8')
+                            ->nullable()
+                            ->same('password_confirmation')
+                            ->hintIcon('heroicon-m-information-circle', tooltip: 'Leeg laten om je huidige wachtwoord te behouden · minimaal 8 tekens'),
 
-                            TextInput::make('password_confirmation')
-                                ->label('Nieuw wachtwoord bevestigen')
-                                ->password()
-                                ->revealable()
-                                ->dehydrated(false),
-                        ]),
+                        TextInput::make('password_confirmation')
+                            ->label('Nieuw wachtwoord bevestigen')
+                            ->password()
+                            ->revealable()
+                            ->dehydrated(false),
+                    ]),
 
-                    Section::make('Weergave')
-                        ->description('Pas het thema en de accentkleur van de applicatie aan.')
-                        ->schema([
-                            ToggleButtons::make('theme_mode')
-                                ->label('Thema')
-                                ->options([
-                                    'dark' => 'Donker',
-                                    'light' => 'Licht',
-                                    'system' => 'Systeem',
-                                ])
-                                ->icons([
-                                    'dark' => 'heroicon-o-moon',
-                                    'light' => 'heroicon-o-sun',
-                                    'system' => 'heroicon-o-computer-desktop',
-                                ])
-                                ->inline()
-                                ->required(),
+                Section::make('Weergave')
+                    ->description('Pas het thema en de accentkleur van de applicatie aan.')
+                    ->schema([
+                        ToggleButtons::make('theme_mode')
+                            ->label('Thema')
+                            ->options([
+                                'dark' => 'Donker',
+                                'light' => 'Licht',
+                                'system' => 'Systeem',
+                            ])
+                            ->icons([
+                                'dark' => 'heroicon-o-moon',
+                                'light' => 'heroicon-o-sun',
+                                'system' => 'heroicon-o-computer-desktop',
+                            ])
+                            ->inline()
+                            ->required(),
 
-                            ToggleButtons::make('accent_color')
-                                ->label('Accentkleur')
-                                ->options(self::accentOptions())
-                                ->columns(5)
-                                ->required(),
-                        ]),
-                ])
-                    ->livewireSubmitHandler('save')
-                    ->footerActions([
-                        Action::make('save')
-                            ->label('Wijzigingen opslaan')
-                            ->submit('save')
-                            ->keyBindings(['mod+s']),
+                        ToggleButtons::make('accent_color')
+                            ->label('Accentkleur')
+                            ->options(self::accentOptions())
+                            ->columns(5)
+                            ->required(),
                     ]),
             ]);
     }
