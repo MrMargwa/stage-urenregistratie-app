@@ -11,7 +11,7 @@ class UsersSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email' => 'admin@admin.com'],
             [
                 'name' => 'Admin',
                 'password' => Hash::make('Admin1!23'),
@@ -27,5 +27,6 @@ class UsersSeeder extends Seeder
                 'role' => User::ROLE_USER,
             ]
         );
+
     }
 }
