@@ -5,11 +5,11 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\TextInput;
-use Filament\Schemas\Components\ToggleButtons;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
