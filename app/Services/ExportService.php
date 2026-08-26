@@ -22,6 +22,7 @@ class ExportService
         'Eindtijd',
         'Pauze (min)',
         'Duur',
+        'Beschrijving',
     ];
 
     public function getEntriesForWeek(User $user, string $weekStart): Collection
@@ -95,6 +96,7 @@ class ExportService
             $entry->end_time->format('H:i'),
             $entry->break_minutes,
             DurationHelper::formatMinutes($entry->duration),
+            $entry->description ?? '',
         ];
     }
 

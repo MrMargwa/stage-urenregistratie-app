@@ -81,28 +81,18 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
     protected function makeExportRow(): Flex
     {
         return Flex::make([
-            Text::make('Exporteer je tijdregistraties als CSV of Excel')
+            Text::make('Exporteer je tijdregistraties als Excel')
                 ->color('gray'),
             Action::make('exportWeek')
-                ->label('Exporteer week (CSV)')
+                ->label('Exporteer week')
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('primary')
                 ->action('exportWeek'),
-            Action::make('exportWeekXlsx')
-                ->label('Exporteer week (Excel)')
-                ->icon(Heroicon::OutlinedArrowDownTray)
-                ->color('success')
-                ->action('exportWeekXlsx'),
             Action::make('exportAll')
-                ->label('Exporteer alles (CSV)')
+                ->label('Exporteer alles')
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('gray')
                 ->action('exportAll'),
-            Action::make('exportAllXlsx')
-                ->label('Exporteer alles (Excel)')
-                ->icon(Heroicon::OutlinedArrowDownTray)
-                ->color('warning')
-                ->action('exportAllXlsx'),
         ])->alignment(Alignment::End);
     }
 
@@ -146,17 +136,6 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
         $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
         $start = Carbon::parse($this->weekStart);
 
-        return app(ExportService::class)->exportToCsv(
-            $entries,
-            'uren_week_' . $start->format('Y-m-d') . '.csv',
-        );
-    }
-
-    public function exportWeekXlsx(): StreamedResponse
-    {
-        $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
-        $start = Carbon::parse($this->weekStart);
-
         return app(ExportService::class)->exportToXlsx(
             $entries,
             'uren_week_' . $start->format('Y-m-d') . '.xlsx',
@@ -165,13 +144,6 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
     }
 
     public function exportAll(): StreamedResponse
-    {
-        $entries = app(ExportService::class)->getAllEntries(auth()->user());
-
-        return app(ExportService::class)->exportToCsv($entries, 'uren_allemaal.csv');
-    }
-
-    public function exportAllXlsx(): StreamedResponse
     {
         $entries = app(ExportService::class)->getAllEntries(auth()->user());
 
