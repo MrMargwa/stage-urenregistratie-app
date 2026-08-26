@@ -9,7 +9,9 @@ vendor
 .vscode
 .cursor
 .zed
-docker-local
+docker-local/Dockerfile
+docker-local/docker-compose.yml
+docker-local/php.ini
 bootstrap/cache/*
 !bootstrap/cache/.gitignore
 storage/framework/cache/*
