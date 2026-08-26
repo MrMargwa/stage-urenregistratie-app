@@ -29,7 +29,7 @@
             <span style="font-size:13px;color:var(--fi-text-muted);">–</span>
         </div>
         <p style="margin:4px 0 0;font-size:13px;color:var(--fi-text-muted);">
-            Stel je totale stage-uren in via je <a href="{{ route('filament.admin.auth.profile') }}" style="color:var(--fi-primary-500);text-decoration:underline;">profiel</a>.
+            Stel je totale stage-uren in via je <a href="{{ route('filament.admin.pages.settings') }}" style="color:var(--fi-primary-500);text-decoration:underline;">profiel</a>.
         </p>
     </div>
 @endif
