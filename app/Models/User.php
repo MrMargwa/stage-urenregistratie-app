@@ -72,6 +72,18 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(TimeEntry::class);
     }
 
+    public function totalLoggedMinutes(): int
+    {
+        return (int) $this->timeEntries->sum('duration');
+    }
+
+    public function totalLoggedHoursFormatted(): string
+    {
+        $total = $this->totalLoggedMinutes();
+
+        return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
