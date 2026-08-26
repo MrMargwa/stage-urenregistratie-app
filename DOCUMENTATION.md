@@ -11,18 +11,21 @@ Dit document is jouw gids door het project. Of je nu net begint of even iets moe
 ## Inhoudsopgave
 
 1. [Hoe dit project in elkaar zit (in 2 minuten)](#1-hoe-dit-project-in-elkaar-zit-in-2-minuten)
-2. [Aan de slag: lokaal ontwikkelen](#2-aan-de-slag-lokaal-ontwikkelen)
-3. [De database: wat staat waar?](#3-de-database-wat-staat-waar)
-4. [Rollen: wie mag wat?](#4-rollen-wie-mag-wat)
-5. [De Models: User en TimeEntry](#5-de-models-user-en-timeentry)
-6. [Services: waar de magie gebeurt](#6-services-waar-de-magie-gebeurt)
-7. [Het Filament Admin Panel](#7-het-filament-admin-panel)
-8. [Exporteren en Importeren](#8-exporteren-en-importeren)
-9. [Deployen naar productie (Railway)](#9-deployen-naar-productie-railway)
-10. [Testen schrijven en uitvoeren](#10-testen-schrijven-en-uitvoeren)
-11. [Als er iets misgaat: debugging gids](#11-als-er-iets-misgaat-debugging-gids)
-12. [Verantwoordelijkheden per rol](#12-verantwoordelijkheden-per-rol)
-13. [Alle bestanden op een rij](#13-alle-bestanden-op-een-rij)
+2. [Hoe de app start (de magie achter localhost:8000)](#2-hoe-de-app-start-de-magie-achter-localhost8000)
+3. [Aan de slag: lokaal ontwikkelen](#3-aan-de-slag-lokaal-ontwikkelen)
+4. [De database: wat staat waar?](#4-de-database-wat-staat-waar)
+5. [Rollen: wie mag wat?](#5-rollen-wie-mag-wat)
+6. [De Models: User en TimeEntry](#6-de-models-user-en-timeentry)
+7. [Helpers: DurationHelper](#7-helpers-durationhelper)
+8. [Services: waar de magie gebeurt](#8-services-waar-de-magie-gebeurt)
+9. [Het Filament Admin Panel](#9-het-filament-admin-panel)
+10. [Filament Routing: hoe pagina's automatisch worden gevonden](#10-filament-routing-hoe-paginas-automatisch-worden-gevonden)
+11. [Exporteren en Importeren](#11-exporteren-en-importeren)
+12. [Deployen naar productie (Railway)](#12-deployen-naar-productie-railway)
+13. [Testen schrijven en uitvoeren](#13-testen-schrijven-en-uitvoeren)
+14. [Als er iets misgaat: debugging gids](#14-als-er-iets-misgaat-debugging-gids)
+15. [Verantwoordelijkheden per rol](#15-verantwoordelijkheden-per-rol)
+16. [Alle bestanden op een rij](#16-alle-bestanden-op-een-rij)
 
 ---
 
@@ -70,14 +73,159 @@ Database (waar alles wordt opgeslagen)
 | `app/Models/User.php` | Gebruiker gegevens | Als je iets met gebruikers doet |
 | `app/Models/TimeEntry.php` | Uren registratie | Als je iets met uren doet |
 | `app/Enums/Role.php` | Rollen (admin/gebruiker/student) | Als je toegangscontrole aanpast |
+| `app/Helpers/DurationHelper.php` | Tijd formattering | Als je tijd-formaten aanpast |
 | `app/Services/WorkbookService.php` | Excel werkblad | Als Excel niet werkt |
+| `app/Services/ExportService.php` | Excel/CSV export | Als export niet werkt |
 | `app/Services/TimeEntrySyncService.php` | Excel import | Als synchronisatie niet werkt |
 | `app/Policies/TimeEntryPolicy.php` | Wie mag wat met uren | Als iemand geen toegang heeft |
 | `routes/web.php` | URL routes | Als een link niet werkt |
 
 ---
 
-## 2. Aan de slag: lokaal ontwikkelen
+## 2. Hoe de app start (de magie achter localhost:8000)
+
+Als je `docker-compose up --build` uitvoert, gebeurt er heel veel achter de schermen. Hier leggen we precies uit wat er gebeurt, stap voor stap.
+
+### Stap 1: Docker start de containers
+
+```
+docker-compose up --build
+        ↓
+Docker leest docker-compose.yml
+        ↓
+Twee containers worden gestart:
+  1. mysql  → een MySQL database
+  2. app    → de Laravel applicatie (PHP 8.4-fpm)
+```
+
+De `docker-entrypoint.sh` wordt uitgevoerd voordat de app start:
+```bash
+composer install --no-interaction --optimize-autoloader
+chown -R www-data:www-data storage bootstrap/cache
+php artisan migrate --force
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+### Stap 2: PHP Built-in Server
+
+De app draait op `php artisan serve`. Dit is **geen** Apache of nginx — het is een ingebouwde PHP-server die ideaal is voor development.
+
+```
+Gebruiker opent http://localhost:8000
+        ↓
+PHP Built-in Server ontvangt het verzoek
+        ↓
+Verwijst naar public/index.php (het entry point)
+```
+
+### Stap 3: Het entry point (`public/index.php`)
+
+```php
+// public/index.php — beknopt
+require __DIR__.'/../vendor/autoload.php';  // Laad alle PHP bestanden
+$app = require_once __DIR__.'/../bootstrap/app.php';  // Maak de Laravel app aan
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+$response = $kernel->handle($request);  // Verwerk het verzoek
+$response->send();  // Stuur het antwoord terug
+```
+
+Dit is de HTML-entree van de hele applicatie. Elk verzoek dat binnenkomt, gaat hierdoor.
+
+### Stap 4: De Laravel App (`bootstrap/app.php`)
+
+```php
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',      // Handmatige routes
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',                           // Gezondheidscheck
+    )
+    ->withMiddleware(...)
+    ->withExceptions(...)
+    ->create();
+```
+
+**Wat hier gebeurt:**
+- Laravel wordt geconfigureerd met basisinstellingen
+- Routes worden geladen uit `routes/web.php`
+- Middleware wordt ingesteld (proxy-trust)
+- Foutafhandeling wordt geconfigureerd (404 → redirect naar dashboard)
+
+### Stap 5: Filament panel wordt geladen
+
+Naast `routes/web.php` laadt Laravel ook de **Panel Providers** — dit zijn service providers die Filament-panels definiëren. De belangrijkste is `AdminPanelProvider`:
+
+```php
+// app/Providers/Filament/AdminPanelProvider.php
+$panel
+    ->id('admin')
+    ->path('dashboard')    // Alle URLs beginnen met /dashboard
+    ->login()              // Login pagina staat op /dashboard/login
+    ->discoverResources(in: app_path('Filament/Admin/Resources'))
+    ->discoverPages(in: app_path('Filament/Admin/Pages'))
+```
+
+**Dit is waar de magie gebeurt:** Filament scant automatisch de `Filament/Admin/Resources` en `Filament/Admin/Pages` mappen, en maakt daar routes voor aan. Daarover meer in [sectie 10: Filament Routing](#10-filament-routing-hoe-paginas-automatisch-worden-gevonden).
+
+### Stap 6: Het verzoek wordt verwerkt
+
+```
+Gebruiker opent http://localhost:8000/dashboard
+        ↓
+1. public/index.php ontvangt het verzoek
+2. Laravel matching: welke route past?
+3. Geen match in web.php → Filament zoekt in z'n panel
+4. Match: /dashboard = het Admin panel
+5. Controle: is de gebruiker ingelogd?
+   - Nee → redirect naar /dashboard/login
+   - Ja → door naar stap 6
+6. Filament vindt de juiste pagina (Dashboard, Resource, etc.)
+7. Livewire verwerkt de actie (als het een AJAX-verzoek is)
+8. Blade rendert de HTML
+9. CSS + JavaScript worden toegevoegd
+10. Antwoord wordt teruggestuurd naar de browser
+```
+
+### Het volledige plaatje
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Browser (http://localhost:8000)                        │
+│  ↓                                                      │
+│  PHP Built-in Server (port 8000)                        │
+│  ↓                                                      │
+│  public/index.php (entry point)                         │
+│  ↓                                                      │
+│  bootstrap/app.php (Laravel config)                     │
+│  ↓                                                      │
+│  AdminPanelProvider (Filament panel)                    │
+│  ↓                                                      │
+│  routes/web.php  ──of──  Filament auto-discovery        │
+│  ↓                                                      │
+│  Controller / Filament Page / Resource                  │
+│  ↓                                                      │
+│  Model → Database                                       │
+│  ↓                                                      │
+│  Response → Browser                                     │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Waarom werkt localhost:8000?
+
+- De `docker-compose.yml` zet de app-container op poort 8000
+- Binnen de container draait `php artisan serve --host=0.0.0.0 --port=8000`
+- Docker maakt deze poort beschikbaar op je host-machine
+- Dus `localhost:8000` = de PHP-server binnen de container
+
+### Waarom localhost:3307 voor MySQL?
+
+- De MySQL-container draait op de standaard poort 3306 **binnen Docker**
+- Docker mapt dit naar poort 3307 op je host-machine
+- Zo voorkom je conflicten met eventueel al draaiende MySQL op je computer
+
+---
+
+## 3. Aan de slag: lokaal ontwikkelen
 
 ### Docker: je beste vriend
 
@@ -168,7 +316,7 @@ APP_URL=http://localhost:8000
 
 ---
 
-## 3. De database: wat staat waar?
+## 4. De database: wat staat waar?
 
 ### De users tabel
 
@@ -242,7 +390,7 @@ $user->totalLoggedHoursFormatted();
 
 ---
 
-## 4. Rollen: wie mag wat?
+## 5. Rollen: wie mag wat?
 
 ### De drie rollen
 
@@ -335,7 +483,7 @@ public static function getEloquentQuery(): Builder
 
 ---
 
-## 5. De Models: User en TimeEntry
+## 6. De Models: User en TimeEntry
 
 ### User Model (`app/Models/User.php`)
 
@@ -385,14 +533,30 @@ public function hasLinkedWorkbook(): bool
 // Haal de totale uren op (in minuten)
 public function totalLoggedMinutes(): int
 {
-    return $this->timeEntries->sum('duration');
+    return (int) $this->timeEntries->sum('duration');
 }
 
-// Formatted als "HH:MM"
+// Formatted als "HH:MM" (gebruikt DurationHelper)
 public function totalLoggedHoursFormatted(): string
 {
-    $total = $this->totalLoggedMinutes();
-    return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
+    return DurationHelper::formatMinutes($this->totalLoggedMinutes());
+}
+
+// Haal de primaire kleur op voor het Filament panel
+public function primaryColor(): array
+{
+    return self::ACCENT_COLORS[$this->accent_color] ?? Color::Cyan;
+}
+
+// Haal de export kleuren op voor Excel headers
+public function exportColors(): array
+{
+    $colors = [
+        'red' => ['bg' => 'FF4444', 'font' => 'FFFFFF'],
+        'blue' => ['bg' => '3B82F6', 'font' => 'FFFFFF'],
+        // ... alle kleuren
+    ];
+    return $colors[$this->accent_color] ?? $colors['cyan'];
 }
 ```
 
@@ -485,7 +649,47 @@ $user->totalLoggedHoursFormatted();  // "07:30"
 
 ---
 
-## 6. Services: waar de magie gebeurt
+## 7. Helpers: DurationHelper
+
+### DurationHelper (`app/Helpers/DurationHelper.php`)
+
+Een klein hulpje dat overal in de app wordt gebruikt om tijd-formatten te doen. Hierdoor hoef je niet steeds `sprintf('%02d:%02d', ...)` te typen.
+
+```php
+class DurationHelper
+{
+    // Zet minuten om naar "HH:MM" formaat
+    public static function formatMinutes(int $minutes): string
+    {
+        return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
+    }
+
+    // Zet seconden om naar "HH:MM" formaat (eerst omrekenen naar minuten)
+    public static function formatSeconds(int $seconds): string
+    {
+        return self::formatMinutes((int) round($seconds / 60));
+    }
+}
+```
+
+**Voorbeelden:**
+
+```php
+DurationHelper::formatMinutes(450);   // "07:30"
+DurationHelper::formatMinutes(60);    // "01:00"
+DurationHelper::formatMinutes(0);     // "00:00"
+DurationHelper::formatMinutes(1440);  // "24:00"
+```
+
+**Waar wordt dit gebruikt?**
+- `Dashboard.php` — voor het tonen van totalen per dag en per week
+- `User.php` — voor `totalLoggedHoursFormatted()`
+- `ExportService.php` — voor de "Duur" kolom in Excel exports
+- `TimeEntryExporter.php` — voor de export kolommen
+
+---
+
+## 8. Services: waar de magie gebeurt
 
 Services zijn PHP-klassen die de "slimme" logica bevatten. Ze doen het echte werk, terwijl de Models alleen data opslaan.
 
@@ -616,9 +820,65 @@ class SyncResult
 }
 ```
 
+### ExportService (`app/Services/ExportService.php`)
+
+Dit is verantwoordelijk voor het exporteren van uren naar Excel (.xlsx) of CSV. Het wordt gebruikt door het Dashboard voor de "Exporteer week" en "Exporteer alles" knoppen.
+
+**Hoe het werkt:**
+
+```php
+class ExportService
+{
+    // Haal alle uren op voor een specifieke week
+    public function getEntriesForWeek(User $user, string $weekStart): Collection
+
+    // Haal alle uren op van een gebruiker
+    public function getAllEntries(User $user): Collection
+
+    // Exporteer naar CSV (streamed)
+    public function exportToCsv(Collection $entries, string $filename): StreamedResponse
+
+    // Exporteer naar XLSX (streamed) met gekleurde headers
+    public function exportToXlsx(
+        Collection $entries,
+        string $filename,
+        ?array $accentColor = null,
+    ): StreamedResponse
+}
+```
+
+**Voorbeeld van gebruik in Dashboard:**
+
+```php
+public function exportWeek(): StreamedResponse
+{
+    $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
+    $start = Carbon::parse($this->weekStart);
+
+    return app(ExportService::class)->exportToXlsx(
+        $entries,
+        'uren_week_' . $start->format('Y-m-d') . '.xlsx',
+        auth()->user()->exportColors(),  // Gebruik de kleur van de gebruiker
+    );
+}
+```
+
+**Kolommen die worden geëxporteerd:**
+| Kolom | Formaat |
+|---|---|
+| Weeknummer | isoWeek() |
+| Datum | d-m-Y |
+| Begintijd | H:i |
+| Eindtijd | H:i |
+| Pauze (min) | number |
+| Duur | HH:MM (via DurationHelper) |
+| Beschrijving | text |
+
+**Waarom streamed?** Omdat je bestanden groot kunnen worden. Met streaming wordt het bestand direct naar de browser gestuurd, zonder dat alles in het geheugen wordt geladen.
+
 ---
 
-## 7. Het Filament Admin Panel
+## 9. Het Filament Admin Panel
 
 ### Wat is Filament?
 
@@ -682,7 +942,7 @@ Het dashboard toont:
 1. Een voortgangsbalk (hoeveel uren je hebt gelopen)
 2. Weeknavigatie (vorige/huidige/volgende week)
 3. Een tabel met de uren van die week
-4. Export-knoppen
+4. Export-knoppen (XLSX export via ExportService)
 
 **De weeknavigatie werkt met Livewire:**
 
@@ -747,21 +1007,216 @@ Deze regelt de Excel-import:
 SyncTimeEntriesAction::make()
 // → Toont een modal met:
 //   - FileUpload (Excel of CSV)
-//   - Select gebruiker (alleen admin)
 //   - Toggle "Verwijder ontbrekende entries"
+//   - Toggle "Vervang alle bestaande entries"
 // → Na upload: TimeEntrySyncService::syncFromFile()
 // → Toont resultaat
 ```
 
+### Filament Exports
+
+#### TimeEntryExporter (`app/Filament/Exports/TimeEntryExporter.php`)
+
+Dit is een Filament Exporter die wordt gebruikt door de `ExportAction` op de `ListTimeEntries` pagina. Het maakt gebruik van het ingebouwde Filament export-systeem.
+
+```php
+class TimeEntryExporter extends Exporter
+{
+    protected static ?string $model = TimeEntry::class;
+
+    public static function getColumns(): array
+    {
+        return [
+            ExportColumn::make('date')
+                ->label('Datum')
+                ->formatStateUsing(fn ($state) => $state->format('d-m-Y')),
+            ExportColumn::make('start_time')
+                ->label('Begintijd')
+                ->formatStateUsing(fn ($state) => $state->format('H:i')),
+            ExportColumn::make('end_time')
+                ->label('Eindtijd')
+                ->formatStateUsing(fn ($state) => $state->format('H:i')),
+            ExportColumn::make('break_minutes')
+                ->label('Pauze (minuten)'),
+            ExportColumn::make('description')
+                ->label('Beschrijving'),
+            ExportColumn::make('duration')
+                ->label('Duur')
+                ->formatStateUsing(fn ($state) => DurationHelper::formatMinutes($state)),
+        ];
+    }
+}
+```
+
+**Wanneer wordt dit gebruikt?** Op de `ListTimeEntries` pagina is er een "Exporteren" knop in de header. Als je daarop klikt, wordt dit Exporter gebruikt om een Excel-bestand te genereren.
+
 ---
 
-## 8. Exporteren en Importeren
+## 10. Filament Routing: hoe pagina's automatisch worden gevonden
+
+Een van de krachtigste features van Filament is **auto-discovery**. Je hoeft geen routes te schrijven — Filament vindt je Resources en Pages automatisch. Maar hoe werkt dat?
+
+### De AdminPanelProvider
+
+In `app/Providers/Filament/AdminPanelProvider.php` staat:
+
+```php
+$panel
+    ->id('admin')
+    ->path('dashboard')
+    ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
+    ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
+    ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\Filament\Admin\Widgets')
+    ->pages([
+        Dashboard::class,
+        Settings::class,
+    ])
+    ->widgets([
+        AccountWidget::class,
+    ])
+```
+
+**Wat doet `discoverResources()`?**
+Het scant de map `app/Filament/Admin/Resources` en vindt daar alle Resource-klassen. Elke Resource wordt automatisch omgezet naar drie routes:
+
+| Resource | Pagina | Automatische URL |
+|---|---|---|
+| `TimeEntryResource` | Lijst | `/dashboard/time-entries` |
+| | Aanmaken | `/dashboard/time-entries/create` |
+| | Bewerken | `/dashboard/time-entries/{id}/edit` |
+| `UserResource` | Lijst | `/dashboard/users` |
+| | Aanmaken | `/dashboard/users/create` |
+| | Bewerken | `/dashboard/users/{id}/edit` |
+
+**Wat doet `discoverPages()`?**
+Het scant de map `app/Filament/Admin/Pages` en vindt daar alle Page-klassen. Elke Page wordt omgezet naar één route:
+
+| Page | Automatische URL |
+|---|---|
+| `Dashboard` | `/dashboard` |
+| `Settings` | `/dashboard/settings` |
+| `EditProfile` | `/dashboard/edit-profile` |
+
+### Hoe Filament de URL bepaalt
+
+Filament gebruikt de **class name** om de URL te bepalen:
+
+```
+TimeEntryResource → /dashboard/time-entries
+UserResource      → /dashboard/users
+Dashboard         → /dashboard
+Settings          → /dashboard/settings
+```
+
+**De regels:**
+1. Het pad begint met het panel-pad (`/dashboard`)
+2. Dan de Resource/Page naam in **kebab-case** (met streepjes)
+3. `Resource` aan het einde wordt weggehaald
+4. `Page` aan het einde wordt weggehaald
+
+**Voorbeelden:**
+- `TimeEntryResource` → verwijder `Resource` → `TimeEntry` → kebab-case → `time-entries` → `/dashboard/time-entries`
+- `ListTimeEntries` → verwijder `List` → `TimeEntries` → kebab-case → `time-entries` → `/dashboard/time-entries` (dezelfde URL!)
+- `CreateTimeEntry` → verwijder `Create` → `TimeEntry` → kebab-case → `time-entry` → `/dashboard/time-entry/create`
+
+### Hoe het matcht met het verzoek
+
+```
+Gebruiker opent /dashboard/time-entries
+        ↓
+Laravel zoekt een route die past
+        ↓
+Geen match in routes/web.php
+        ↓
+Filament panel gezocht (id: admin)
+        ↓
+Resource gevonden: TimeEntryResource
+        ↓
+Pagina: ListTimeEntries (lijst pagina)
+        ↓
+Gerenderd!
+```
+
+### De navigatie (sidebar)
+
+Filament maakt automatisch een sidebar-menu aan op basis van de Resources en Pages:
+
+```php
+// In TimeEntryResource:
+protected static ?string $navigationLabel = 'Tijdregistraties';
+protected static ?string $navigationIcon = 'heroicon-m-clock';
+
+// In UserResource:
+protected static ?string $navigationLabel = 'Gebruikers';
+protected static ?string $navigationIcon = 'heroicon-m-users';
+```
+
+Dit bepaalt wat er in de sidebar staat. De volgorde wordt bepaald door de `navigationSort` eigenschap.
+
+### Handmatige routes vs Filament routes
+
+| Type | Waar gedefinieerd | Voorbeeld |
+|---|---|---|
+| Handmatig | `routes/web.php` | `Route::get('/', ...)` |
+| Filament Resources | Auto-discovery | `TimeEntryResource` → `/dashboard/time-entries` |
+| Filament Pages | Auto-discovery | `Dashboard` → `/dashboard` |
+| Filament Widgets | Auto-discovery | AccountWidget (geen route, wordt inline geladen) |
+
+### Waarom werkt de redirect van `/` naar `/dashboard`?
+
+In `routes/web.php`:
+```php
+Route::get('/', function () {
+    return redirect()->route('filament.admin.pages.dashboard');
+});
+```
+
+Dit stuurt iedereen die naar de homepage gaat door naar het dashboard. De route `filament.admin.pages.dashboard` wordt automatisch aangemaakt door Filament.
+
+---
+
+## 11. Exporteren en Importeren
 
 ### Excel Export (.xlsx)
 
-Dit gebruikt het Maatwebsite/Excel pakket. De exporter staat in `app/Filament/Admin/Exports/TimeEntryExporter.php`.
+Er zijn twee manieren om uren te exporteren:
 
-**Kolommen die worden geëxporteerd:**
+#### 1. Via het Dashboard (ExportService)
+
+Op het dashboard zijn er twee knoppen:
+- **"Exporteer week"** — exporteert de huidige week naar XLSX
+- **"Exporteer alles"** — exporteert alle uren naar XLSX
+
+Dit gebruikt `ExportService`:
+
+```php
+public function exportWeek(): StreamedResponse
+{
+    $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
+    $start = Carbon::parse($this->weekStart);
+
+    return app(ExportService::class)->exportToXlsx(
+        $entries,
+        'uren_week_' . $start->format('Y-m-d') . '.xlsx',
+        auth()->user()->exportColors(),
+    );
+}
+```
+
+#### 2. Via de Tijdregistraties lijst (Filament Exporter)
+
+Op de `ListTimeEntries` pagina is er een "Exporteren" knop. Dit gebruikt `TimeEntryExporter` (Filament's ingebouwde export-systeem):
+
+```php
+ExportAction::make()
+    ->exporter(TimeEntryExporter::class)
+    ->formats([ExportFormat::Xlsx])
+    ->label('Exporteren')
+    ->icon('heroicon-o-arrow-down-tray')
+    ->color('danger'),
+```
+
+**Kolommen die worden geëxporteerd (beide methodes):**
 | Kolom | Formaat |
 |---|---|
 | Datum | d-m-Y |
@@ -769,28 +1224,15 @@ Dit gebruikt het Maatwebsite/Excel pakket. De exporter staat in `app/Filament/Ad
 | Eindtijd | H:i |
 | Pauze (minuten) | number |
 | Beschrijving | text |
-| Duur | HH:MM (berekend) |
+| Duur | HH:MM (berekend via DurationHelper) |
 
 ### CSV Export
 
-Dit is handmatig geïmplementeerd in de Dashboard pagina:
-
-```php
-public function exportWeek(): StreamedResponse
-{
-    $entries = TimeEntry::where('user_id', auth()->id())
-        ->whereBetween('date', [$start, $end])
-        ->get();
-
-    return $this->buildCsvDownload($entries, 'uren_week.csv');
-}
-```
-
-**Waarom streamed?** Omdat je bestanden groot kunnen worden. Met streaming wordt het bestand direct naar de browser gestuurd, zonder dat alles in het geheugen wordt geladen.
+CSV export is beschikbaar via `ExportService::exportToCsv()`, maar wordt momenteel niet actief gebruikt in de interface. De voorkeur gaat uit naar XLSX vanwege de betere opmaak.
 
 ### Excel Synchronisatie (Import)
 
-Dit is de meest complexe feature. Zie [Services: TimeEntrySyncService](#6-services-waar-de-magie-gebeurt) voor de uitleg.
+Dit is de meest complexe feature. Zie [Services: TimeEntrySyncService](#8-services-waar-de-magie-gebeurt) voor de uitleg.
 
 ### Het Workbook
 
@@ -803,7 +1245,7 @@ Het workbook is een persoonlijk Excel-bestand per gebruiker. Het wordt:
 
 ---
 
-## 9. Deployen naar productie (Railway)
+## 12. Deployen naar productie (Railway)
 
 ### Hoe het werkt
 
@@ -871,7 +1313,7 @@ Zie `DEPLOY.md` voor een uitgebreider overzicht.
 
 ---
 
-## 10. Testen schrijven en uitvoeren
+## 13. Testen schrijven en uitvoeren
 
 ### Hoe voer je testen uit?
 
@@ -971,7 +1413,7 @@ it('doet iets goeds', function () {
 
 ---
 
-## 11. Als er iets misgaat: debugging gids
+## 14. Als er iets misgaat: debugging gids
 
 ### Stap 1: Bekijk de logs
 
@@ -1071,7 +1513,7 @@ Route::get('/workbook/download', [WorkbookController::class, 'download'])
 
 ---
 
-## 12. Verantwoordelijkheden per rol
+## 15. Verantwoordelijkheden per rol
 
 ### Admin (1 gebruiker — jij!)
 
@@ -1085,7 +1527,7 @@ Route::get('/workbook/download', [WorkbookController::class, 'download'])
 - Alleen z'n eigen uren zien (net als iedereen)
 
 **Export & Sync:**
-- Eigen uren exporteren (CSV)
+- Eigen uren exporteren (XLSX)
 - Eigen uren synchroniseren (Excel)
 
 **Systeem:**
@@ -1101,7 +1543,7 @@ Route::get('/workbook/download', [WorkbookController::class, 'download'])
 - Voortgangsbalk zien
 
 **Export & Sync:**
-- Eigen uren exporteren (CSV)
+- Eigen uren exporteren (XLSX)
 - Eigen uren synchroniseren (Excel)
 
 **Workbook:**
@@ -1111,7 +1553,7 @@ Route::get('/workbook/download', [WorkbookController::class, 'download'])
 
 **Instellingen:**
 - Eigen account aanpassen
-- Them kiezen
+- Thema kiezen
 - Accentkleur kiezen
 - Stage-uren doel instellen
 
@@ -1120,7 +1562,7 @@ Zelfde als Gebruiker. Deze rol is voor de toekomst.
 
 ---
 
-## 13. Alle bestanden op een rij
+## 16. Alle bestanden op een rij
 
 ### Models
 | Bestand | Wat het doet |
@@ -1133,12 +1575,18 @@ Zelfde als Gebruiker. Deze rol is voor de toekomst.
 |---|---|
 | `app/Enums/Role.php` | Rollen: admin, gebruiker, student |
 
+### Helpers
+| Bestand | Wat het doet |
+|---|---|
+| `app/Helpers/DurationHelper.php` | Tijd formattering (minuten → HH:MM) |
+
 ### Services
 | Bestand | Wat het doet |
 |---|---|
 | `app/Services/WorkbookService.php` | Excel werkblad beheer |
 | `app/Services/TimeEntrySyncService.php` | Excel/CSV import |
 | `app/Services/SyncResult.php` | Resultaat van een sync |
+| `app/Services/ExportService.php` | Excel/CSV export |
 
 ### Filament Resources
 | Bestand | Wat het doet |
@@ -1155,6 +1603,11 @@ Zelfde als Gebruiker. Deze rol is voor de toekomst.
 | `app/Filament/Admin/Resources/Users/Pages/CreateUser.php` | Gebruiker aanmaken |
 | `app/Filament/Admin/Resources/Users/Pages/EditUser.php` | Gebruiker bewerken |
 | `app/Filament/Admin/Resources/Users/Pages/ListUsers.php` | Gebruikers lijst |
+
+### Filament Exports
+| Bestand | Wat het doet |
+|---|---|
+| `app/Filament/Exports/TimeEntryExporter.php` | Filament export voor uren |
 
 ### Filament Pages
 | Bestand | Wat het doet |
@@ -1236,12 +1689,3 @@ Waarom? Omdat `migrate:fresh` op productie elke keer opnieuw draait. Als je een 
 
 ---
 
-## Nog vragen?
-
-Als je er niet uitkomt, check dan:
-1. De logs (`storage/logs/laravel.log`)
-2. De tests (lopen ze nog?)
-3. De database (`php artisan tinker`)
-4. Deze documentatie (je bent er al!)
-
-Veel succes met het project! 🚀
