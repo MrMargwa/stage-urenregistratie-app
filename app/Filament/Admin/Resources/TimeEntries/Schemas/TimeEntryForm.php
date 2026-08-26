@@ -43,7 +43,8 @@ class TimeEntryForm
                     ->required()
                     ->seconds(false)
                     ->displayFormat('H:i')
-                    ->format('H:i'),
+                    ->format('H:i')
+                    ->afterOrEqual('start_time'),
 
                 TextInput::make('break_minutes')
                     ->label('Pauze (minuten)')

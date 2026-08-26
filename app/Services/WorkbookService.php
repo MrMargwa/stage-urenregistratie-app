@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\DurationHelper;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use OpenSpout\Common\Entity\Row;
@@ -105,13 +106,13 @@ class WorkbookService
                 $entry->start_time->format('H:i'),
                 $entry->end_time->format('H:i'),
                 $entry->break_minutes,
-                sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60),
+                DurationHelper::formatMinutes($minutes),
                 (string) $entry->description,
             ]));
         }
 
         $writer->addRow(Row::fromValues([
-            '', '', '', '', sprintf('%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60),
+            '', '', '', '', DurationHelper::formatMinutes($totalMinutes),
             'Totaal',
         ]));
 

@@ -3,6 +3,8 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Models\TimeEntry;
+use App\Helpers\DurationHelper;
+use App\Services\ExportService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -79,33 +81,35 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
     protected function makeExportRow(): Flex
     {
         return Flex::make([
-            Text::make('Exporteer je tijdregistraties als CSV-bestand')
+            Text::make('Exporteer je tijdregistraties als CSV of Excel')
                 ->color('gray'),
             Action::make('exportWeek')
-                ->label('Exporteer week')
+                ->label('Exporteer week (CSV)')
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('primary')
                 ->action('exportWeek'),
+            Action::make('exportWeekXlsx')
+                ->label('Exporteer week (Excel)')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('success')
+                ->action('exportWeekXlsx'),
             Action::make('exportAll')
-                ->label('Exporteer alles')
+                ->label('Exporteer alles (CSV)')
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('gray')
                 ->action('exportAll'),
+            Action::make('exportAllXlsx')
+                ->label('Exporteer alles (Excel)')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('warning')
+                ->action('exportAllXlsx'),
         ])->alignment(Alignment::End);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->records(fn () => TimeEntry::where('user_id', auth()->id())
-                ->whereBetween('date', [
-                    Carbon::parse($this->weekStart),
-                    Carbon::parse($this->weekStart)->copy()->endOfWeek(),
-                ])
-                ->orderBy('date')
-                ->orderBy('start_time')
-                ->get()
-            )
+            ->records(fn () => $this->getWeekEntries())
             ->columns([
                 TextColumn::make('date')
                     ->label('Datum')
@@ -129,7 +133,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->tooltip(fn (?string $state): ?string => $state),
                 TextColumn::make('duration')
                     ->label('Duur')
-                    ->formatStateUsing(fn (int $state): string => sprintf('%02d:%02d', intdiv($state, 60), $state % 60))
+                    ->formatStateUsing(fn (int $state): string => DurationHelper::formatMinutes($state))
                     ->weight('bold'),
             ])
             ->defaultSort('date', 'asc')
@@ -139,54 +143,55 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 
     public function exportWeek(): StreamedResponse
     {
+        $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
         $start = Carbon::parse($this->weekStart);
-        $end = $start->copy()->endOfWeek();
 
-        $entries = TimeEntry::where('user_id', auth()->id())
-            ->whereBetween('date', [$start, $end])
-            ->orderBy('date')
-            ->orderBy('start_time')
-            ->get();
+        return app(ExportService::class)->exportToCsv(
+            $entries,
+            'uren_week_' . $start->format('Y-m-d') . '.csv',
+        );
+    }
 
-        return $this->buildCsvDownload($entries, 'uren_week_' . $start->format('Y-m-d') . '.csv');
+    public function exportWeekXlsx(): StreamedResponse
+    {
+        $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
+        $start = Carbon::parse($this->weekStart);
+
+        return app(ExportService::class)->exportToXlsx(
+            $entries,
+            'uren_week_' . $start->format('Y-m-d') . '.xlsx',
+            auth()->user()->exportColors(),
+        );
     }
 
     public function exportAll(): StreamedResponse
     {
-        $entries = TimeEntry::where('user_id', auth()->id())
+        $entries = app(ExportService::class)->getAllEntries(auth()->user());
+
+        return app(ExportService::class)->exportToCsv($entries, 'uren_allemaal.csv');
+    }
+
+    public function exportAllXlsx(): StreamedResponse
+    {
+        $entries = app(ExportService::class)->getAllEntries(auth()->user());
+
+        return app(ExportService::class)->exportToXlsx(
+            $entries,
+            'uren_allemaal.xlsx',
+            auth()->user()->exportColors(),
+        );
+    }
+
+    private function getWeekEntries(): \Illuminate\Support\Collection
+    {
+        $start = Carbon::parse($this->weekStart);
+        $end = $start->copy()->endOfWeek();
+
+        return TimeEntry::where('user_id', auth()->id())
+            ->whereBetween('date', [$start, $end])
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
-
-        return $this->buildCsvDownload($entries, 'uren_allemaal.csv');
-    }
-
-    protected function buildCsvDownload($entries, string $filename): StreamedResponse
-    {
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        return response()->stream(function () use ($entries) {
-            $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, ['Datum', 'Dag', 'Start', 'Eind', 'Pauze (min)', 'Omschrijving', 'Duur (uren)']);
-
-            foreach ($entries as $entry) {
-                fputcsv($handle, [
-                    $entry->date->format('d-m-Y'),
-                    $entry->date->translatedFormat('l'),
-                    $entry->start_time->format('H:i'),
-                    $entry->end_time->format('H:i'),
-                    $entry->break_minutes,
-                    $entry->description ?? '',
-                    sprintf('%02d:%02d', intdiv($entry->duration, 60), $entry->duration % 60),
-                ]);
-            }
-
-            fclose($handle);
-        }, 200, $headers);
     }
 
     public function getWeekEntriesProperty(): array
@@ -194,22 +199,18 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
         $start = Carbon::parse($this->weekStart);
         $end = $start->copy()->endOfWeek();
 
-        $entries = TimeEntry::where('user_id', auth()->id())
-            ->whereBetween('date', [$start, $end])
-            ->orderBy('date')
-            ->orderBy('start_time')
-            ->get();
+        $entries = $this->getWeekEntries();
 
         $days = [];
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dayEntries = $entries->filter(fn (TimeEntry $e) => $e->date->isSameDay($date));
-            $totalMinutes = $dayEntries->sum('duration');
+            $totalMinutes = (int) $dayEntries->sum('duration');
 
             $days[] = [
                 'date' => $date->copy(),
                 'entries' => $dayEntries,
                 'total_minutes' => $totalMinutes,
-                'total_hours' => sprintf('%02d:%02d', intdiv($totalMinutes, 60), $totalMinutes % 60),
+                'total_hours' => DurationHelper::formatMinutes($totalMinutes),
                 'is_today' => $date->isToday(),
             ];
         }
@@ -224,9 +225,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 
     public function getTotalHoursProperty(): string
     {
-        $total = $this->totalMinutes;
-
-        return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
+        return DurationHelper::formatMinutes($this->totalMinutes);
     }
 
     public function getWeekLabelProperty(): string

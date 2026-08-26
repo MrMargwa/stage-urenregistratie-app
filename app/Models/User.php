@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Helpers\DurationHelper;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -20,10 +21,6 @@ class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
-
-    public const ROLE_ADMIN = 'admin';
-
-    public const ROLE_USER = 'user';
 
     public const THEME_MODES = ['dark', 'light', 'system'];
 
@@ -55,7 +52,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->role === Role::Admin;
     }
 
     public function hasLinkedWorkbook(): bool
@@ -76,6 +73,39 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(TimeEntry::class);
     }
 
+    public function totalLoggedMinutes(): int
+    {
+        return (int) $this->timeEntries->sum('duration');
+    }
+
+    public function totalLoggedHoursFormatted(): string
+    {
+        return DurationHelper::formatMinutes($this->totalLoggedMinutes());
+    }
+
+    public function exportColors(): array
+    {
+        $colors = [
+            'red' => ['bg' => 'FF4444', 'font' => 'FFFFFF'],
+            'orange' => ['bg' => 'FF8C00', 'font' => 'FFFFFF'],
+            'yellow' => ['bg' => 'FFD700', 'font' => '000000'],
+            'lime' => ['bg' => '9ACD32', 'font' => '000000'],
+            'green' => ['bg' => '22C55E', 'font' => 'FFFFFF'],
+            'emerald' => ['bg' => '10B981', 'font' => 'FFFFFF'],
+            'teal' => ['bg' => '14B8A6', 'font' => 'FFFFFF'],
+            'cyan' => ['bg' => '06B6D4', 'font' => 'FFFFFF'],
+            'sky' => ['bg' => '0EA5E9', 'font' => 'FFFFFF'],
+            'blue' => ['bg' => '3B82F6', 'font' => 'FFFFFF'],
+            'indigo' => ['bg' => '6366F1', 'font' => 'FFFFFF'],
+            'violet' => ['bg' => '8B5CF6', 'font' => 'FFFFFF'],
+            'purple' => ['bg' => 'A855F7', 'font' => 'FFFFFF'],
+            'fuchsia' => ['bg' => 'D946EF', 'font' => 'FFFFFF'],
+            'pink' => ['bg' => 'EC4899', 'font' => 'FFFFFF'],
+        ];
+
+        return $colors[$this->accent_color] ?? $colors['cyan'];
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -84,9 +114,12 @@ class User extends Authenticatable implements FilamentUser
     protected function casts(): array
     {
         return [
+            'role' => Role::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'workbook_linked_at' => 'datetime',
         ];
     }
 }
+
+
