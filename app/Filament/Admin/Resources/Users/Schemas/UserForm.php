@@ -31,7 +31,7 @@ class UserForm
                         ->mapWithKeys(fn (Role $role) => [$role->value => $role->label()])
                         ->toArray())
                     ->required()
-                    ->default(Role::Gebruiker),
+                    ->default(Role::User),
 
                 TextInput::make('password')
                     ->label('Wachtwoord')

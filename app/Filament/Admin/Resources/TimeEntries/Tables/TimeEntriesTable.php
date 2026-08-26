@@ -20,7 +20,7 @@ class TimeEntriesTable
                 TextColumn::make('user.name')
                     ->label('Gebruiker')
                     ->sortable()
-                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
+                    ->hidden(),
 
                 TextColumn::make('date')
                     ->label('Datum')

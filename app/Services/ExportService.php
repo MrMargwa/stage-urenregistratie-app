@@ -65,7 +65,7 @@ class ExportService
         string $filename,
         ?array $accentColor = null,
     ): \Symfony\Component\HttpFoundation\StreamedResponse {
-        return response()->stream(function () use ($entries, $accentColor) {
+        return response()->stream(function () use ($entries, $filename, $accentColor) {
             $writer = new Writer();
             $writer->openToBrowser($filename);
 

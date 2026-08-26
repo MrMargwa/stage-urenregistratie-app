@@ -38,18 +38,30 @@ class WorkbookService
         return $user->hasLinkedWorkbook();
     }
 
-    public function link(User $user): void
+    public function link(User $user, ?string $customPath = null): void
     {
-        $user->forceFill(['workbook_linked_at' => now()])->save();
+        $user->forceFill([
+            'workbook_linked_at' => now(),
+            'workbook_path' => $customPath,
+        ])->save();
 
         $this->generate($user);
     }
 
     public function unlink(User $user): void
     {
-        $user->forceFill(['workbook_linked_at' => null])->save();
+        $path = $user->workbook_path;
 
-        Storage::disk('local')->delete($this->relativePath($user));
+        $user->forceFill([
+            'workbook_linked_at' => null,
+            'workbook_path' => null,
+        ])->save();
+
+        if ($path && file_exists($path)) {
+            unlink($path);
+        } else {
+            Storage::disk('local')->delete($this->relativePath($user));
+        }
     }
 
     /**
@@ -86,10 +98,20 @@ class WorkbookService
             ->orderBy('start_time')
             ->get();
 
-        Storage::disk('local')->makeDirectory(dirname($this->relativePath($user)));
+        $targetPath = $user->workbook_path;
+
+        if ($targetPath) {
+            $dir = dirname($targetPath);
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+        } else {
+            $targetPath = $this->absolutePath($user);
+            Storage::disk('local')->makeDirectory(dirname($this->relativePath($user)));
+        }
 
         $writer = new Writer;
-        $writer->openToFile($this->absolutePath($user));
+        $writer->openToFile($targetPath);
 
         $writer->addRow(Row::fromValues([
             'Datum', 'Begintijd', 'Eindtijd', 'Pauze (min)', 'Duur', 'Beschrijving',
@@ -118,16 +140,26 @@ class WorkbookService
 
         $writer->close();
 
-        return $this->absolutePath($user);
+        return $targetPath;
     }
 
     public function exists(User $user): bool
     {
+        $path = $user->workbook_path;
+        if ($path) {
+            return file_exists($path);
+        }
+
         return Storage::disk('local')->exists($this->relativePath($user));
     }
 
     public function absolutePath(User $user): string
     {
+        $customPath = $user->workbook_path;
+        if ($customPath) {
+            return $customPath;
+        }
+
         return Storage::disk('local')->path($this->relativePath($user));
     }
 

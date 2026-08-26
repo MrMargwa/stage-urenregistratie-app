@@ -101,7 +101,7 @@ class SyncTimeEntriesAction extends Action
                 ->preload()
                 ->required()
                 ->default(auth()->id())
-                ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
+                ->hidden(),
 
             Toggle::make('delete_missing')
                 ->label('Verwijder registraties die niet in het bestand staan')

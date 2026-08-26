@@ -98,7 +98,7 @@ class Settings extends Page
                     ->description('Kies je persoonlijke accentkleur voor de applicatie.')
                     ->schema([
                         View::make('filament.components.accent-color-picker')
-                            ->data(['accentColor' => $accentColor]),
+                            ->viewData(['accentColor' => $accentColor]),
                     ]),
             ]);
     }
