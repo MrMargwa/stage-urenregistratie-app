@@ -41,11 +41,7 @@ class TimeEntryResource extends Resource
     {
         $query = parent::getEloquentQuery();
 
-        $user = auth()->user();
-
-        if (! $user?->isAdmin()) {
-            $query->where('user_id', $user?->id);
-        }
+        $query->where('user_id', auth()->id());
 
         return $query;
     }

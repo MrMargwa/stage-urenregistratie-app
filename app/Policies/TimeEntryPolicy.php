@@ -14,7 +14,7 @@ class TimeEntryPolicy
 
     public function view(User $user, TimeEntry $timeEntry): bool
     {
-        return $user->isAdmin() || $timeEntry->user_id === $user->id;
+        return $timeEntry->user_id === $user->id;
     }
 
     public function create(User $user): bool
@@ -24,12 +24,12 @@ class TimeEntryPolicy
 
     public function update(User $user, TimeEntry $timeEntry): bool
     {
-        return $user->isAdmin() || $timeEntry->user_id === $user->id;
+        return $timeEntry->user_id === $user->id;
     }
 
     public function delete(User $user, TimeEntry $timeEntry): bool
     {
-        return $user->isAdmin() || $timeEntry->user_id === $user->id;
+        return $timeEntry->user_id === $user->id;
     }
 
     public function deleteAny(User $user): bool
@@ -39,11 +39,11 @@ class TimeEntryPolicy
 
     public function restore(User $user, TimeEntry $timeEntry): bool
     {
-        return $user->isAdmin() || $timeEntry->user_id === $user->id;
+        return $timeEntry->user_id === $user->id;
     }
 
     public function forceDelete(User $user, TimeEntry $timeEntry): bool
     {
-        return $user->isAdmin() || $timeEntry->user_id === $user->id;
+        return $timeEntry->user_id === $user->id;
     }
 }

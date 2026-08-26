@@ -56,15 +56,15 @@ it('staat de gebruikersbeheer-pagina toe voor admins', function () {
         ->assertOk();
 });
 
-it('staat admins toe alle uren te beheren', function () {
+it('blokkeert admins voor andermans uren', function () {
     $admin = User::factory()->admin()->create();
     $ander = User::factory()->create();
 
     $entry = TimeEntry::factory()->for($ander)->create();
 
-    expect($admin->can('view', $entry))->toBeTrue()
-        ->and($admin->can('update', $entry))->toBeTrue()
-        ->and($admin->can('delete', $entry))->toBeTrue();
+    expect($admin->can('view', $entry))->toBeFalse()
+        ->and($admin->can('update', $entry))->toBeFalse()
+        ->and($admin->can('delete', $entry))->toBeFalse();
 });
 
 it('blokkeert gewone gebruikers voor andermans uren', function () {

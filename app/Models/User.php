@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Helpers\DurationHelper;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -79,9 +80,30 @@ class User extends Authenticatable implements FilamentUser
 
     public function totalLoggedHoursFormatted(): string
     {
-        $total = $this->totalLoggedMinutes();
+        return DurationHelper::formatMinutes($this->totalLoggedMinutes());
+    }
 
-        return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
+    public function exportColors(): array
+    {
+        $colors = [
+            'red' => ['bg' => 'FF4444', 'font' => 'FFFFFF'],
+            'orange' => ['bg' => 'FF8C00', 'font' => 'FFFFFF'],
+            'yellow' => ['bg' => 'FFD700', 'font' => '000000'],
+            'lime' => ['bg' => '9ACD32', 'font' => '000000'],
+            'green' => ['bg' => '22C55E', 'font' => 'FFFFFF'],
+            'emerald' => ['bg' => '10B981', 'font' => 'FFFFFF'],
+            'teal' => ['bg' => '14B8A6', 'font' => 'FFFFFF'],
+            'cyan' => ['bg' => '06B6D4', 'font' => 'FFFFFF'],
+            'sky' => ['bg' => '0EA5E9', 'font' => 'FFFFFF'],
+            'blue' => ['bg' => '3B82F6', 'font' => 'FFFFFF'],
+            'indigo' => ['bg' => '6366F1', 'font' => 'FFFFFF'],
+            'violet' => ['bg' => '8B5CF6', 'font' => 'FFFFFF'],
+            'purple' => ['bg' => 'A855F7', 'font' => 'FFFFFF'],
+            'fuchsia' => ['bg' => 'D946EF', 'font' => 'FFFFFF'],
+            'pink' => ['bg' => 'EC4899', 'font' => 'FFFFFF'],
+        ];
+
+        return $colors[$this->accent_color] ?? $colors['cyan'];
     }
 
     /**
@@ -99,3 +121,5 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 }
+
+

@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('time_entries', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete()->index();
 
-            $table->date('date');
+            $table->date('date')->index();
 
             $table->time('start_time');
 
@@ -27,6 +27,8 @@ return new class extends Migration
             $table->text('description')->nullable();
 
             $table->timestamps();
+
+            $table->index(['user_id', 'date']);
         });
     }
 

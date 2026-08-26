@@ -12,4 +12,4 @@ cmds = [
 ]
 
 [phases.build]
-cmds = ['php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan package:discover --ansi && npm run build']
+cmds = ['php artisan package:discover --ansi && npm run build']

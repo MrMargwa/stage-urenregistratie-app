@@ -129,6 +129,8 @@ class Settings extends Page
             $data['password'] = Hash::make($data['password']);
         }
 
+        unset($data['password_confirmation']);
+
         $user->update($data);
 
         $this->dispatch('settings-applied', theme: $user->theme_mode);

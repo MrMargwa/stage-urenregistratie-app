@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\ValidationException;
 
 class TimeEntry extends Model
 {
@@ -34,7 +35,7 @@ class TimeEntry extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function duration(): Attribute
+    protected function duration(): Attribute
     {
         return Attribute::get(function () {
             $minutes = (int) round($this->start_time->diffInMinutes($this->end_time));
@@ -44,6 +45,24 @@ class TimeEntry extends Model
             }
 
             return max(0, $minutes - $this->break_minutes);
+        });
+    }
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        static::saving(function (TimeEntry $entry): void {
+            if ($entry->start_time && $entry->end_time) {
+                $start = $entry->start_time;
+                $end = $entry->end_time;
+
+                if ($end->lt($start)) {
+                    throw ValidationException::withMessages([
+                        'end_time' => 'De eindtijd kan niet voor de begintijd liggen.',
+                    ]);
+                }
+            }
         });
     }
 }

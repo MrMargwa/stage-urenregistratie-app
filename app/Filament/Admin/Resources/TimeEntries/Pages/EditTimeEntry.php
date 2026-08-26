@@ -19,9 +19,7 @@ class EditTimeEntry extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (! (auth()->user()?->isAdmin() ?? false)) {
-            $data['user_id'] = auth()->id();
-        }
+        $data['user_id'] = auth()->id();
 
         return $data;
     }
