@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries;
 
-use App\Enums\Role;
 use App\Filament\Admin\Resources\TimeEntries\Pages\CreateTimeEntry;
 use App\Filament\Admin\Resources\TimeEntries\Pages\EditTimeEntry;
 use App\Filament\Admin\Resources\TimeEntries\Pages\ListTimeEntries;

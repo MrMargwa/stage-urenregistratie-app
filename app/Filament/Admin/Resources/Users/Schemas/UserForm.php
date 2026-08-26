@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Schemas;
 
-use App\Models\User;
+use App\Enums\Role;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -27,12 +27,11 @@ class UserForm
 
                 Select::make('role')
                     ->label('Rol')
-                    ->options([
-                        User::ROLE_USER => 'Gebruiker',
-                        User::ROLE_ADMIN => 'Admin',
-                    ])
+                    ->options(fn () => collect(Role::cases())
+                        ->mapWithKeys(fn (Role $role) => [$role->value => $role->label()])
+                        ->toArray())
                     ->required()
-                    ->default(User::ROLE_USER),
+                    ->default(Role::Gebruiker),
 
                 TextInput::make('password')
                     ->label('Wachtwoord')

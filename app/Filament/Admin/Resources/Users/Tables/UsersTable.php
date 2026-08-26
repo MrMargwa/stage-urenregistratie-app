@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Tables;
 
-use App\Models\User;
+use App\Enums\Role;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,8 +29,8 @@ class UsersTable
                 TextColumn::make('role')
                     ->label('Rol')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => $state === User::ROLE_ADMIN ? 'Admin' : 'Gebruiker')
-                    ->color(fn (string $state): string => $state === User::ROLE_ADMIN ? 'danger' : 'gray')
+                    ->formatStateUsing(fn (Role $state): string => $state->label())
+                    ->color(fn (Role $state): string => $state->isAdmin() ? 'danger' : 'gray')
                     ->sortable(),
 
                 TextColumn::make('time_entries_count')
@@ -46,10 +46,9 @@ class UsersTable
             ->filters([
                 SelectFilter::make('role')
                     ->label('Rol')
-                    ->options([
-                        User::ROLE_USER => 'Gebruiker',
-                        User::ROLE_ADMIN => 'Admin',
-                    ]),
+                    ->options(fn () => collect(Role::cases())
+                        ->mapWithKeys(fn (Role $role) => [$role->value => $role->label()])
+                        ->toArray()),
             ])
             ->recordActions([
                 EditAction::make(),

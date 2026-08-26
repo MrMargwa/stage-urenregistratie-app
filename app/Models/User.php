@@ -21,10 +21,6 @@ class User extends Authenticatable implements FilamentUser
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    public const ROLE_ADMIN = 'admin';
-
-    public const ROLE_USER = 'user';
-
     public const THEME_MODES = ['dark', 'light', 'system'];
 
     /**
@@ -55,7 +51,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->role === Role::Admin;
     }
 
     public function hasLinkedWorkbook(): bool
@@ -84,6 +80,7 @@ class User extends Authenticatable implements FilamentUser
     protected function casts(): array
     {
         return [
+            'role' => Role::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'workbook_linked_at' => 'datetime',
