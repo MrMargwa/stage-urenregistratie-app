@@ -5,11 +5,11 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\TextInput;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -38,7 +38,9 @@ class Settings extends Page
 
     public function mount(): void
     {
-        $this->form->fill(auth()->user()->only(['name', 'email', 'theme_mode', 'accent_color']));
+        $user = auth()->user();
+
+        $this->form->fill($user->only(['name', 'email', 'accent_color']));
     }
 
     protected function getHeaderActions(): array
@@ -54,6 +56,8 @@ class Settings extends Page
 
     public function form(Schema $schema): Schema
     {
+        $accentColor = auth()->user()->accent_color ?? 'amber';
+
         return $schema
             ->model(auth()->user())
             ->operation('edit')
@@ -90,29 +94,11 @@ class Settings extends Page
                             ->dehydrated(false),
                     ]),
 
-                Section::make('Weergave')
-                    ->description('Pas het thema en de accentkleur van de applicatie aan.')
+                Section::make('Accentkleur')
+                    ->description('Kies je persoonlijke accentkleur voor de applicatie.')
                     ->schema([
-                        ToggleButtons::make('theme_mode')
-                            ->label('Thema')
-                            ->options([
-                                'dark' => 'Donker',
-                                'light' => 'Licht',
-                                'system' => 'Systeem',
-                            ])
-                            ->icons([
-                                'dark' => 'heroicon-o-moon',
-                                'light' => 'heroicon-o-sun',
-                                'system' => 'heroicon-o-computer-desktop',
-                            ])
-                            ->inline()
-                            ->required(),
-
-                        ToggleButtons::make('accent_color')
-                            ->label('Accentkleur')
-                            ->options(self::accentOptions())
-                            ->columns(5)
-                            ->required(),
+                        View::make('filament.components.accent-color-picker')
+                            ->data(['accentColor' => $accentColor]),
                     ]),
             ]);
     }
@@ -134,35 +120,11 @@ class Settings extends Page
 
         $user->update($data);
 
-        $this->dispatch('settings-applied', theme: $user->theme_mode);
+        $this->dispatch('accent-color-changed');
 
         Notification::make()
             ->title('Instellingen opgeslagen')
             ->success()
             ->send();
-    }
-
-    /** @return array<string, string> */
-    public static function accentOptions(): array
-    {
-        $labels = [
-            'red' => 'Rood',
-            'orange' => 'Oranje',
-            'yellow' => 'Geel',
-            'lime' => 'Limoen',
-            'green' => 'Groen',
-            'emerald' => 'Emerald',
-            'teal' => 'Teal',
-            'cyan' => 'Cyaan',
-            'sky' => 'Hemelsblauw',
-            'blue' => 'Blauw',
-            'indigo' => 'Indigo',
-            'violet' => 'Violet',
-            'purple' => 'Paars',
-            'fuchsia' => 'Fuchsia',
-            'pink' => 'Roze',
-        ];
-
-        return array_intersect_key($labels, User::ACCENT_COLORS);
     }
 }

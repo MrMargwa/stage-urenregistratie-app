@@ -6,6 +6,15 @@
         : null;
 @endphp
 
+<style>
+    .fi-btn.fi-color-primary {
+        --text: #000 !important;
+        --hover-text: #000 !important;
+        --dark-text: #000 !important;
+        --dark-hover-text: #000 !important;
+    }
+</style>
+
 <script>
     @if ($theme !== null)
         localStorage.setItem('theme', @js($theme));
@@ -21,5 +30,9 @@
             || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
         document.documentElement.classList.toggle('dark', isDark);
+    });
+
+    document.addEventListener('accent-color-changed', () => {
+        window.location.reload();
     });
 </script>

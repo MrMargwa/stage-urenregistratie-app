@@ -30,6 +30,7 @@ class User extends Authenticatable implements FilamentUser
     public const ACCENT_COLORS = [
         'red' => Color::Red,
         'orange' => Color::Orange,
+        'amber' => Color::Amber,
         'yellow' => Color::Yellow,
         'lime' => Color::Lime,
         'green' => Color::Green,
@@ -65,7 +66,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function primaryColor(): array
     {
-        return self::ACCENT_COLORS[$this->accent_color] ?? Color::Cyan;
+        return self::ACCENT_COLORS[$this->accent_color] ?? Color::Amber;
     }
 
     public function timeEntries(): HasMany
@@ -88,6 +89,7 @@ class User extends Authenticatable implements FilamentUser
         $colors = [
             'red' => ['bg' => 'FF4444', 'font' => 'FFFFFF'],
             'orange' => ['bg' => 'FF8C00', 'font' => 'FFFFFF'],
+            'amber' => ['bg' => 'F59E0B', 'font' => 'FFFFFF'],
             'yellow' => ['bg' => 'FFD700', 'font' => '000000'],
             'lime' => ['bg' => '9ACD32', 'font' => '000000'],
             'green' => ['bg' => '22C55E', 'font' => 'FFFFFF'],
@@ -103,7 +105,7 @@ class User extends Authenticatable implements FilamentUser
             'pink' => ['bg' => 'EC4899', 'font' => 'FFFFFF'],
         ];
 
-        return $colors[$this->accent_color] ?? $colors['cyan'];
+        return $colors[$this->accent_color] ?? $colors['amber'];
     }
 
     /**

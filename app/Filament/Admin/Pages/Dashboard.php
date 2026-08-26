@@ -30,9 +30,16 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 
     public ?string $weekStart = null;
 
+    private ?\Illuminate\Support\Collection $cachedWeekEntries = null;
+
     public function mount(): void
     {
         $this->weekStart = Carbon::now()->startOfWeek()->format('Y-m-d');
+    }
+
+    public function dehydrate(): void
+    {
+        $this->cachedWeekEntries = null;
     }
 
     public function content(Schema $schema): Schema
@@ -156,14 +163,20 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 
     private function getWeekEntries(): \Illuminate\Support\Collection
     {
+        if ($this->cachedWeekEntries !== null) {
+            return $this->cachedWeekEntries;
+        }
+
         $start = Carbon::parse($this->weekStart);
         $end = $start->copy()->endOfWeek();
 
-        return TimeEntry::where('user_id', auth()->id())
+        $this->cachedWeekEntries = TimeEntry::where('user_id', auth()->id())
             ->whereBetween('date', [$start, $end])
             ->orderBy('date')
             ->orderBy('start_time')
             ->get();
+
+        return $this->cachedWeekEntries;
     }
 
     public function getWeekEntriesProperty(): array
