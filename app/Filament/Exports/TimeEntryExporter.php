@@ -85,7 +85,7 @@ class TimeEntryExporter extends Exporter
             ->setBackgroundColor(
                 Color::rgb($red, $green, $blue)
             );
-            // ->setCellAlignment(CellAlignment::CENTER);
+        // ->setCellAlignment(CellAlignment::CENTER);
         // ->setCellVerticalAlignment(CellVerticalAlignment::CENTER);
     }
 
@@ -96,12 +96,13 @@ class TimeEntryExporter extends Exporter
     {
         $options = new Options;
 
-        $options->setColumnWidth(14, 1); // Datum
-        $options->setColumnWidth(14, 2); // Begintijd
-        $options->setColumnWidth(14, 3); // Eindtijd
-        $options->setColumnWidth(20, 4); // Pauze
-        $options->setColumnWidth(60, 5); // Beschrijving
-        $options->setColumnWidth(14, 6); // Duur
+        $options->setColumnWidth(10, 1); // Week
+        $options->setColumnWidth(12, 2); // Datum
+        $options->setColumnWidth(10, 3); // Begintijd
+        $options->setColumnWidth(10, 4); // Eindtijd
+        $options->setColumnWidth(18, 5); // Pauze (minuten)
+        $options->setColumnWidth(40, 6); // Beschrijving
+        $options->setColumnWidth(12, 7); // Duur
 
         return $options;
     }
