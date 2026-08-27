@@ -85,8 +85,8 @@ class TimeEntryExporter extends Exporter
             ->setBackgroundColor(
                 Color::rgb($red, $green, $blue)
             )
-            ->setCellAlignment(CellAlignment::CENTER)
-            ->setCellVerticalAlignment(CellVerticalAlignment::CENTER);
+            ->setCellAlignment(CellAlignment::CENTER);
+        // ->setCellVerticalAlignment(CellVerticalAlignment::CENTER);
     }
 
     /**
