@@ -23,7 +23,7 @@ class TimeEntryForm
                     ->preload()
                     ->required()
                     ->default(auth()->id())
-                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
+                    ->hidden(),
 
                 DatePicker::make('date')
                     ->label('Datum')

@@ -5,12 +5,10 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -39,7 +37,20 @@ class Settings extends Page
 
     public function mount(): void
     {
-        $this->form->fill(auth()->user()->only(['name', 'email', 'theme_mode', 'accent_color']));
+        $user = auth()->user();
+
+        $this->form->fill($user->only(['name', 'email', 'target_hours']));
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('save')
+                ->label('Opslaan')
+                ->icon('heroicon-o-check')
+                ->action('save')
+                ->keyBindings(['mod+s']),
+        ];
     }
 
     public function form(Schema $schema): Schema
@@ -49,69 +60,48 @@ class Settings extends Page
             ->operation('edit')
             ->statePath('data')
             ->components([
-                Form::make([
-                    Section::make('Account')
-                        ->description('Beheer je accountgegevens.')
-                        ->schema([
-                            TextInput::make('name')
-                                ->label('Naam')
-                                ->required()
-                                ->maxLength(255),
+                Section::make('Account')
+                    ->description('Beheer je accountgegevens.')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Naam')
+                            ->required()
+                            ->maxLength(255),
 
-                            TextInput::make('email')
-                                ->label('E-mailadres')
-                                ->email()
-                                ->required()
-                                ->maxLength(255)
-                                ->unique(ignoreRecord: true),
+                        TextInput::make('email')
+                            ->label('E-mailadres')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true),
 
-                            TextInput::make('password')
-                                ->label('Nieuw wachtwoord')
-                                ->password()
-                                ->revealable()
-                                ->rule('min:8')
-                                ->nullable()
-                                ->same('password_confirmation')
-                                ->hintIcon('heroicon-m-information-circle', tooltip: 'Leeg laten om je huidige wachtwoord te behouden · minimaal 8 tekens'),
+                        TextInput::make('password')
+                            ->label('Nieuw wachtwoord')
+                            ->password()
+                            ->revealable()
+                            ->rule('min:8')
+                            ->nullable()
+                            ->same('password_confirmation')
+                            ->hintIcon('heroicon-m-information-circle', tooltip: 'Leeg laten om je huidige wachtwoord te behouden · minimaal 8 tekens'),
 
-                            TextInput::make('password_confirmation')
-                                ->label('Nieuw wachtwoord bevestigen')
-                                ->password()
-                                ->revealable()
-                                ->dehydrated(false),
-                        ]),
+                        TextInput::make('password_confirmation')
+                            ->label('Nieuw wachtwoord bevestigen')
+                            ->password()
+                            ->revealable()
+                            ->dehydrated(false),
+                    ]),
 
-                    Section::make('Weergave')
-                        ->description('Pas het thema en de accentkleur van de applicatie aan.')
-                        ->schema([
-                            ToggleButtons::make('theme_mode')
-                                ->label('Thema')
-                                ->options([
-                                    'dark' => 'Donker',
-                                    'light' => 'Licht',
-                                    'system' => 'Systeem',
-                                ])
-                                ->icons([
-                                    'dark' => 'heroicon-o-moon',
-                                    'light' => 'heroicon-o-sun',
-                                    'system' => 'heroicon-o-computer-desktop',
-                                ])
-                                ->inline()
-                                ->required(),
-
-                            ToggleButtons::make('accent_color')
-                                ->label('Accentkleur')
-                                ->options(self::accentOptions())
-                                ->columns(5)
-                                ->required(),
-                        ]),
-                ])
-                    ->livewireSubmitHandler('save')
-                    ->footerActions([
-                        Action::make('save')
-                            ->label('Wijzigingen opslaan')
-                            ->submit('save')
-                            ->keyBindings(['mod+s']),
+                Section::make('Stage')
+                    ->description('Stel het totale aantal uren in dat je moet lopen')
+                    ->icon('heroicon-o-academic-cap')
+                    ->schema([
+                        TextInput::make('target_hours')
+                            ->label('Totaal te lopen uren')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(9999)
+                            ->placeholder('bijv. 500')
+                            ->helperText('Het totale aantal stage-uren dat je moet voltooien'),
                     ]),
             ]);
     }
@@ -133,35 +123,9 @@ class Settings extends Page
 
         $user->update($data);
 
-        $this->dispatch('settings-applied', theme: $user->theme_mode);
-
         Notification::make()
             ->title('Instellingen opgeslagen')
             ->success()
             ->send();
-    }
-
-    /** @return array<string, string> */
-    public static function accentOptions(): array
-    {
-        $labels = [
-            'red' => 'Rood',
-            'orange' => 'Oranje',
-            'yellow' => 'Geel',
-            'lime' => 'Limoen',
-            'green' => 'Groen',
-            'emerald' => 'Emerald',
-            'teal' => 'Teal',
-            'cyan' => 'Cyaan',
-            'sky' => 'Hemelsblauw',
-            'blue' => 'Blauw',
-            'indigo' => 'Indigo',
-            'violet' => 'Violet',
-            'purple' => 'Paars',
-            'fuchsia' => 'Fuchsia',
-            'pink' => 'Roze',
-        ];
-
-        return array_intersect_key($labels, User::ACCENT_COLORS);
     }
 }

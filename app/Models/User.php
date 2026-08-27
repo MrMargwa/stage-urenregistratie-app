@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Andreia\FilamentUiSwitcher\Models\Traits\HasUiPreferences;
 use App\Enums\Role;
 use App\Helpers\DurationHelper;
 use Database\Factories\UserFactory;
@@ -15,35 +16,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'theme_mode', 'accent_color', 'workbook_linked_at', 'target_hours'])]
+#[Fillable(['name', 'email', 'password', 'role', 'theme_mode', 'workbook_linked_at', 'workbook_path', 'target_hours', 'ui_preferences'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasUiPreferences;
 
     public const THEME_MODES = ['dark', 'light', 'system'];
-
-    /**
-     * @var array<string, array<string, array<int|string, string|int>|string>>
-     */
-    public const ACCENT_COLORS = [
-        'red' => Color::Red,
-        'orange' => Color::Orange,
-        'yellow' => Color::Yellow,
-        'lime' => Color::Lime,
-        'green' => Color::Green,
-        'emerald' => Color::Emerald,
-        'teal' => Color::Teal,
-        'cyan' => Color::Cyan,
-        'sky' => Color::Sky,
-        'blue' => Color::Blue,
-        'indigo' => Color::Indigo,
-        'violet' => Color::Violet,
-        'purple' => Color::Purple,
-        'fuchsia' => Color::Fuchsia,
-        'pink' => Color::Pink,
-    ];
 
     public function canAccessPanel(Panel $panel): bool
     {
@@ -58,14 +38,6 @@ class User extends Authenticatable implements FilamentUser
     public function hasLinkedWorkbook(): bool
     {
         return $this->workbook_linked_at !== null;
-    }
-
-    /**
-     * @return array<string, array<int|string, string|int>|string>
-     */
-    public function primaryColor(): array
-    {
-        return self::ACCENT_COLORS[$this->accent_color] ?? Color::Cyan;
     }
 
     public function timeEntries(): HasMany
@@ -83,27 +55,39 @@ class User extends Authenticatable implements FilamentUser
         return DurationHelper::formatMinutes($this->totalLoggedMinutes());
     }
 
+    /**
+     * Bepaal de achtergrond- en tekstkleur voor de Excel-header op basis van de
+     * actieve filament-palette van de ingelogde gebruiker.
+     *
+     * @return array{bg: string, font: string}
+     */
     public function exportColors(): array
     {
-        $colors = [
-            'red' => ['bg' => 'FF4444', 'font' => 'FFFFFF'],
-            'orange' => ['bg' => 'FF8C00', 'font' => 'FFFFFF'],
-            'yellow' => ['bg' => 'FFD700', 'font' => '000000'],
-            'lime' => ['bg' => '9ACD32', 'font' => '000000'],
-            'green' => ['bg' => '22C55E', 'font' => 'FFFFFF'],
-            'emerald' => ['bg' => '10B981', 'font' => 'FFFFFF'],
-            'teal' => ['bg' => '14B8A6', 'font' => 'FFFFFF'],
-            'cyan' => ['bg' => '06B6D4', 'font' => 'FFFFFF'],
-            'sky' => ['bg' => '0EA5E9', 'font' => 'FFFFFF'],
-            'blue' => ['bg' => '3B82F6', 'font' => 'FFFFFF'],
-            'indigo' => ['bg' => '6366F1', 'font' => 'FFFFFF'],
-            'violet' => ['bg' => '8B5CF6', 'font' => 'FFFFFF'],
-            'purple' => ['bg' => 'A855F7', 'font' => 'FFFFFF'],
-            'fuchsia' => ['bg' => 'D946EF', 'font' => 'FFFFFF'],
-            'pink' => ['bg' => 'EC4899', 'font' => 'FFFFFF'],
-        ];
+        $bgHex = 'F59E0B';
 
-        return $colors[$this->accent_color] ?? $colors['cyan'];
+        try {
+            $palette = config('filament-palette.palette.'.app('filament.palette')->get(), []);
+
+            $primary = $palette['primary'] ?? Color::Amber;
+
+            foreach ([500, 600, 400] as $shade) {
+                if (isset($primary[$shade])) {
+                    $bgHex = ltrim((string) $primary[$shade], '#');
+                    break;
+                }
+            }
+        } catch (\Throwable) {
+            // fall back to amber
+        }
+
+        [$r, $g, $b] = array_map('hexdec', str_split($bgHex, 2));
+
+        $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+
+        return [
+            'bg' => strtoupper($bgHex),
+            'font' => $luminance > 0.6 ? '000000' : 'FFFFFF',
+        ];
     }
 
     /**
@@ -118,8 +102,7 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'workbook_linked_at' => 'datetime',
+            'ui_preferences' => 'array',
         ];
     }
 }
-
-

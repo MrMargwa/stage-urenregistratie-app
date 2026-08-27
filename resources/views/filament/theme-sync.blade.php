@@ -6,6 +6,15 @@
         : null;
 @endphp
 
+<style>
+    .fi-btn.fi-color-primary {
+        --text: #000 !important;
+        --hover-text: #000 !important;
+        --dark-text: #000 !important;
+        --dark-hover-text: #000 !important;
+    }
+</style>
+
 <script>
     @if ($theme !== null)
         localStorage.setItem('theme', @js($theme));

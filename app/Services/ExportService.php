@@ -20,7 +20,8 @@ class ExportService
         'Datum',
         'Begintijd',
         'Eindtijd',
-        'Pauze (min)',
+        'Pauze',
+        'Beschrijving',
         'Duur',
     ];
 
@@ -64,7 +65,7 @@ class ExportService
         string $filename,
         ?array $accentColor = null,
     ): \Symfony\Component\HttpFoundation\StreamedResponse {
-        return response()->stream(function () use ($entries, $accentColor) {
+        return response()->stream(function () use ($entries, $filename, $accentColor) {
             $writer = new Writer();
             $writer->openToBrowser($filename);
 
@@ -94,6 +95,7 @@ class ExportService
             $entry->start_time->format('H:i'),
             $entry->end_time->format('H:i'),
             $entry->break_minutes,
+            $entry->description ?? '',
             DurationHelper::formatMinutes($entry->duration),
         ];
     }
@@ -118,7 +120,7 @@ class ExportService
         $style->setFontColor($fontColor);
 
         $border = new Border(
-            new BorderPart(Border::BOTTOM, Border::STYLE_SOLID, Border::WIDTH_THIN, 'CCCCCC'),
+            new BorderPart(Border::BOTTOM, 'CCCCCC', Border::WIDTH_THIN, Border::STYLE_SOLID),
         );
         $style->setBorder($border);
 

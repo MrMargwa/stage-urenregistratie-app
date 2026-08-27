@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+// use Andreia\FilamentUiSwitcher\FilamentUiSwitcherPlugin;
+use Andreia\FilamentUiSwitcher\FilamentUiSwitcherPlugin;
 use App\Filament\Admin\Pages\Dashboard;
 use App\Filament\Admin\Pages\Settings;
 use Filament\Enums\ThemeMode;
@@ -11,8 +13,6 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -20,7 +20,6 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Octopy\Filament\Palette\Http\Middleware\ApplyPalette;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -30,15 +29,13 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('dashboard')
             ->login()
-            ->colors(fn (): array => [
-                'primary' => auth()->user()?->primaryColor() ?? Color::Cyan,
-            ])
             ->defaultThemeMode(ThemeMode::Dark)
-            ->themeSwitcher(false)
-            ->renderHook(
-                PanelsRenderHook::STYLES_AFTER,
-                fn (): string => view('filament.theme-sync')->render(),
+            ->plugin(
+                FilamentUiSwitcherPlugin::make()
+                    ->withModeSwitcher()
             )
+            ->themeSwitcher(false)
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\Filament\Admin\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\Filament\Admin\Pages')
             ->pages([
@@ -62,7 +59,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                ApplyPalette::class,
             ]);
     }
 }
