@@ -4,6 +4,6 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "startCommand": "php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache && until php artisan migrate --force; do echo 'Waiting for database...'; sleep 5; done && PHP_CLI_SERVER_WORKERS=4 php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+        "startCommand": "php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan migrate --force && PHP_CLI_SERVER_WORKERS=1 php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
     }
 }
