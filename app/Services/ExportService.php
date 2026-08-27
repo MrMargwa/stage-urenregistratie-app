@@ -20,9 +20,9 @@ class ExportService
         'Datum',
         'Begintijd',
         'Eindtijd',
-        'Pauze (min)',
-        'Duur',
+        'Pauze',
         'Beschrijving',
+        'Duur',
     ];
 
     public function getEntriesForWeek(User $user, string $weekStart): Collection
@@ -95,8 +95,8 @@ class ExportService
             $entry->start_time->format('H:i'),
             $entry->end_time->format('H:i'),
             $entry->break_minutes,
-            DurationHelper::formatMinutes($entry->duration),
             $entry->description ?? '',
+            DurationHelper::formatMinutes($entry->duration),
         ];
     }
 
@@ -120,7 +120,7 @@ class ExportService
         $style->setFontColor($fontColor);
 
         $border = new Border(
-            new BorderPart(Border::BOTTOM, Border::STYLE_SOLID, Border::WIDTH_THIN, 'CCCCCC'),
+            new BorderPart(Border::BOTTOM, 'CCCCCC', Border::WIDTH_THIN, Border::STYLE_SOLID),
         );
         $style->setBorder($border);
 

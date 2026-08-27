@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\TimeEntry;
 use App\Helpers\DurationHelper;
-use App\Services\ExportService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -18,7 +17,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 {
@@ -54,7 +52,6 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                 ->weight('bold')
                 ->color('primary'),
             EmbeddedTable::make(),
-            $this->makeExportRow(),
         ]);
     }
 
@@ -83,24 +80,6 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->url(fn (): string => route('filament.admin.resources.time-entries.create'))
                     ->color('primary'),
         ])->alignment(Alignment::Between);
-    }
-
-    protected function makeExportRow(): Flex
-    {
-        return Flex::make([
-            Text::make('Exporteer je tijdregistraties als Excel')
-                ->color('gray'),
-            Action::make('exportWeek')
-                ->label('Exporteer week')
-                ->icon(Heroicon::OutlinedArrowDownTray)
-                ->color('primary')
-                ->action('exportWeek'),
-            Action::make('exportAll')
-                ->label('Exporteer alles')
-                ->icon(Heroicon::OutlinedArrowDownTray)
-                ->color('gray')
-                ->action('exportAll'),
-        ])->alignment(Alignment::End);
     }
 
     public function table(Table $table): Table
@@ -136,29 +115,6 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
             ->defaultSort('date', 'asc')
             ->paginated([10, 25, 50])
             ->searchable(false);
-    }
-
-    public function exportWeek(): StreamedResponse
-    {
-        $entries = app(ExportService::class)->getEntriesForWeek(auth()->user(), $this->weekStart);
-        $start = Carbon::parse($this->weekStart);
-
-        return app(ExportService::class)->exportToXlsx(
-            $entries,
-            'uren_week_' . $start->format('Y-m-d') . '.xlsx',
-            auth()->user()->exportColors(),
-        );
-    }
-
-    public function exportAll(): StreamedResponse
-    {
-        $entries = app(ExportService::class)->getAllEntries(auth()->user());
-
-        return app(ExportService::class)->exportToXlsx(
-            $entries,
-            'uren_allemaal.xlsx',
-            auth()->user()->exportColors(),
-        );
     }
 
     private function getWeekEntries(): \Illuminate\Support\Collection

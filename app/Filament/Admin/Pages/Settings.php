@@ -9,7 +9,6 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -40,7 +39,7 @@ class Settings extends Page
     {
         $user = auth()->user();
 
-        $this->form->fill($user->only(['name', 'email', 'accent_color']));
+        $this->form->fill($user->only(['name', 'email', 'target_hours']));
     }
 
     protected function getHeaderActions(): array
@@ -56,8 +55,6 @@ class Settings extends Page
 
     public function form(Schema $schema): Schema
     {
-        $accentColor = auth()->user()->accent_color ?? 'amber';
-
         return $schema
             ->model(auth()->user())
             ->operation('edit')
@@ -94,11 +91,17 @@ class Settings extends Page
                             ->dehydrated(false),
                     ]),
 
-                Section::make('Accentkleur')
-                    ->description('Kies je persoonlijke accentkleur voor de applicatie.')
+                Section::make('Stage')
+                    ->description('Stel het totale aantal uren in dat je moet lopen')
+                    ->icon('heroicon-o-academic-cap')
                     ->schema([
-                        View::make('filament.components.accent-color-picker')
-                            ->viewData(['accentColor' => $accentColor]),
+                        TextInput::make('target_hours')
+                            ->label('Totaal te lopen uren')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(9999)
+                            ->placeholder('bijv. 500')
+                            ->helperText('Het totale aantal stage-uren dat je moet voltooien'),
                     ]),
             ]);
     }
@@ -119,8 +122,6 @@ class Settings extends Page
         unset($data['password_confirmation']);
 
         $user->update($data);
-
-        $this->dispatch('accent-color-changed');
 
         Notification::make()
             ->title('Instellingen opgeslagen')

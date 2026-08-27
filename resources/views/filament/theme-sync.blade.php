@@ -31,8 +31,4 @@
 
         document.documentElement.classList.toggle('dark', isDark);
     });
-
-    document.addEventListener('accent-color-changed', () => {
-        window.location.reload();
-    });
 </script>
