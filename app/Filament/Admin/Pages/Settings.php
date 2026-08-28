@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -89,6 +90,13 @@ class Settings extends Page
                             ->password()
                             ->revealable()
                             ->dehydrated(false),
+
+                        TextInput::make('current_password')
+                            ->label('Huidige wachtwoord')
+                            ->password()
+                            ->revealable()
+                            ->required(fn (Get $get): bool => filled($get('password')))
+                            ->helperText('Vul je huidige wachtwoord in om het wachtwoord te wijzigen'),
                     ]),
 
                 Section::make('Stage')
@@ -113,15 +121,26 @@ class Settings extends Page
         /** @var User $user */
         $user = auth()->user();
 
-        if (blank($data['password'] ?? null)) {
-            unset($data['password']);
-        } else {
-            $data['password'] = Hash::make($data['password']);
+        $clean = [
+            'name' => $data['name'] ?? null,
+            'email' => $data['email'] ?? null,
+            'target_hours' => $data['target_hours'] ?? null,
+        ];
+
+        if (filled($data['password'] ?? null)) {
+            if (! Hash::check($data['current_password'] ?? '', $user->password)) {
+                Notification::make()
+                    ->title('Huidige wachtwoord is onjuist')
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+
+            $clean['password'] = Hash::make($data['password']);
         }
 
-        unset($data['password_confirmation']);
-
-        $user->update($data);
+        $user->update($clean);
 
         Notification::make()
             ->title('Instellingen opgeslagen')
