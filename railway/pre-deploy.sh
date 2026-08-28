@@ -2,6 +2,14 @@
 set -e
 
 echo "Waiting for database to become available..."
+
+echo "DB_CONNECTION=${DB_CONNECTION:-<empty>}"
+echo "DB_URL set: $([ -n "$DB_URL" ] && echo yes || echo no)"
+echo "DB_URL prefix: $(printf '%s' "$DB_URL" | cut -c1-40)"
+echo "DB_HOST=${DB_HOST:-<empty>}"
+echo "DB_PORT=${DB_PORT:-<empty>}"
+echo "DB_DATABASE=${DB_DATABASE:-<empty>}"
+
 MAX_ATTEMPTS=30
 attempt=0
 

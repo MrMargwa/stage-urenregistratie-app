@@ -41,6 +41,11 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 
 > ⚠️ `${{Postgres.DATABASE_URL}}` verwijst naar de database-service. Heet jouw database-service anders (bijv. `postgres` of `database`), pas dan het eerste deel aan: `${{<servicenaam>.DATABASE_URL}}`.
 >
+> 🔎 **Deploy-crash: `connection refused 127.0.0.1:5432 ... database laravel`?** Dit betekent dat `DB_URL` (of `DB_HOST`/`DB_PORT`/`DB_DATABASE`) **niet** (goed) op de app-service staat. Zonder `DB_URL` valt Laravel terug op de defaults `127.0.0.1:5432`/`laravel`/`root` uit `config/database.php:90-94` — vandaar `laravel` als databasenaam. Je gebruikt de key **`DB_URL`** (niet `DATABASE_URL`, die leest Laravel niet uit deze config). Controleer drie dingen:
+> 1. De value is van de vorm `${{<servicenaam>.DATABASE_URL}}` **zonder aanhalingstekens** eromheen (een `"${{...}}"` wordt als letterlijke tekst doorgegeven en is een ongeldige URL).
+> 2. `<servicenaam>` is **exact** de servicenaam van je Postgres-service (hoofdlettergevoelig, bijv. `Postgres-5c9fa272-...`).
+> 3. De variable staat op de **app-service**, niet op de database-service.
+>
 > 💡 **Waarom Redis?** Zonder Redis slaat de app cache en sessions op in PostgreSQL. Elke pagina-laad is dan meerdere extra DB-rondes over het netwerk (trager). Met Redis zijn dat snelle in-memory reads. Lokaal merk je het verschil niet (MySQL op localhost), online wél — dit is naast Nginx/PHP-FPM de grootste snelheidswinst. Wil je het eenvoudig houden, dan volstaat `database` ook prima.
 
 Elke wijziging in Variables triggert automatisch een herstart.
