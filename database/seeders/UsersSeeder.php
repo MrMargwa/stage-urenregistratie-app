@@ -11,18 +11,33 @@ class UsersSeeder extends Seeder
 {
     public function run(): void
     {
-        User::create([
+        $adminPassword = env('SEED_ADMIN_PASSWORD', 'Welkom1!23');
+        $userPassword = env('SEED_USER_PASSWORD', 'Welkom1!23');
+
+        $this->upsertUser([
             'email' => 'admin@admin.com',
             'name' => 'Admin',
-            'password' => Hash::make('Admin1!23'),
+            'password' => Hash::make($adminPassword),
             'role' => Role::Admin,
         ]);
 
-        User::create([
+        $this->upsertUser([
             'email' => 'testaccount01@example.com',
             'name' => 'Test Account 01',
-            'password' => Hash::make('Welkom1!23'),
+            'password' => Hash::make($userPassword),
             'role' => Role::User,
         ]);
+    }
+
+    /**
+     * @param  array{email: string, name: string, password: string, role: Role}  $attributes
+     */
+    private function upsertUser(array $attributes): void
+    {
+        $email = $attributes['email'];
+
+        unset($attributes['email']);
+
+        User::updateOrCreate(['email' => $email], $attributes);
     }
 }

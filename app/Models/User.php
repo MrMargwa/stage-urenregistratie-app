@@ -21,7 +21,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasUiPreferences;
+    use HasFactory, HasUiPreferences, Notifiable;
 
     public const THEME_MODES = ['dark', 'light', 'system'];
 
@@ -47,7 +47,11 @@ class User extends Authenticatable implements FilamentUser
 
     public function totalLoggedMinutes(): int
     {
-        return (int) $this->timeEntries->sum('duration');
+        $entries = $this->timeEntries()
+            ->select(['id', 'date', 'start_time', 'end_time', 'break_minutes'])
+            ->get();
+
+        return (int) $entries->sum('duration');
     }
 
     public function totalLoggedHoursFormatted(): string
