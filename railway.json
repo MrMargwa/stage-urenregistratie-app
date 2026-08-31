@@ -4,7 +4,6 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "preDeployCommand": "chmod +x ./railway/pre-deploy.sh && sh ./railway/pre-deploy.sh",
-        "startCommand": "mkdir -p /var/log/nginx && node /assets/scripts/prestart.mjs /assets/nginx.template.conf /nginx.conf && (php-fpm -y /assets/php-fpm.conf & nginx -c /nginx.conf)"
+        "preDeployCommand": "chmod +x ./railway/pre-deploy.sh && sh ./railway/pre-deploy.sh"
     }
 }

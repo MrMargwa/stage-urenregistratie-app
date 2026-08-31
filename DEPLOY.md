@@ -32,6 +32,7 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `APP_KEY` | genereer lokaal: `php artisan key:generate --show` |
 | `DB_CONNECTION` | `pgsql` |
 | `DB_URL` | `${{Postgres.DATABASE_URL}}` |
+| `LOG_CHANNEL` | `stderr` (Railway logt naar stderr; `single`/file-logging is vluchtig en verdwijnt) |
 | `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
 | `QUEUE_CONNECTION` | `sync` (of `redis` voor async exports) |
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
@@ -47,6 +48,12 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 > 3. De variable staat op de **app-service**, niet op de database-service.
 >
 > 💡 **Waarom Redis?** Zonder Redis slaat de app cache en sessions op in PostgreSQL. Elke pagina-laad is dan meerdere extra DB-rondes over het netwerk (trager). Met Redis zijn dat snelle in-memory reads. Lokaal merk je het verschil niet (MySQL op localhost), online wél — dit is naast Nginx/PHP-FPM de grootste snelheidswinst. Wil je het eenvoudig houden, dan volstaat `database` ook prima.
+>
+> 🚀 **Gratis snelheidswinsten zonder Redis** (staan al in deze repo):
+> 1. **OPcache** — ingeschakeld via `nixpacks.toml` (`php84Extensions.opcache`). PHP hercompiled op die manier geen code-bundels bij elke request. Dit is de grootste gratis PHP-winst op Railway.
+> 2. **Gecachte config/routes/views** — draait al in `railway/pre-deploy.sh`.
+> 3. **`LOG_CHANNEL=stderr`** — zet dit in Railway; file-logging is vluchtig en onzichtbaar in de Railway-logs.
+> 4. **Minder DB-queries per request** — het dashboard laadt nu de week-totalen efficiënter, en admin-views eager-loaden gerelateerde records (geen N+1).
 
 Elke wijziging in Variables triggert automatisch een herstart.
 

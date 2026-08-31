@@ -3,7 +3,7 @@ NIXPACKS_PHP_VERSION = '8.4'
 NIXPACKS_NODE_VERSION = '22'
 
 [phases.setup]
-nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip', 'php84Extensions.pdo_pgsql', 'php84Extensions.redis']
+nixPkgs = ['php84Extensions.intl', 'php84Extensions.zip', 'php84Extensions.pdo_pgsql', 'php84Extensions.redis', 'php84Extensions.opcache']
 
 [phases.install]
 cmds = [
@@ -13,3 +13,7 @@ cmds = [
 
 [phases.build]
 cmds = ['php artisan package:discover --ansi && npm run build']
+
+[phases.run]
+overriddenByEnv = 'CMD'
+

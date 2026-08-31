@@ -8,8 +8,11 @@ pauze en beschrijving per registratie; duur wordt automatisch berekend.
 ### Urenregistratie
 - Registraties aanmaken, bewerken en verwijderen (`/admin/time-entries`)
 - Automatische duurberekening (werkt ook over middernacht heen)
-- Filters op maand en week
-- **Exporteren** naar `.xlsx` (knop "Exporteren" in de lijstweergave)
+- Overlap-validatie: overlappende registraties op dezelfde dag worden geweigerd
+- **Weekstaat-filter**: selecteer een week in de lijst om alleen die week te bekijken
+- **Exporteer naar `.xlsx`** (knop "Exporteren (.xlsx)"): exporteert de uren zoals je ze ziet —
+  selecteer eerst een weekstaat in de filter voor een weekexport, of laat de filter leeg voor alle uren.
+  Kolommen: Week, Datum, Begintijd, Eindtijd, Pauze, Beschrijving, Duur.
 - **Excel synchroniseren** (knop "Excel synchroniseren"): upload een `.xlsx`/`.csv`-bestand en de app
   synchroniseert je registraties ermee. Herkende kopregels (NL én EN): datum/date, begintijd/start,
   eindtijd/end/einde, pauze/break en beschrijving/omschrijving/description.
@@ -22,10 +25,11 @@ pauze en beschrijving per registratie; duur wordt automatisch berekend.
   (ook na een Excel-sync). Download het actuele werkblad op elk moment via "Mijn Excel-werkblad".
 
 ### Rollen & beveiliging
-- Rol `admin` of `user` op elk account (alleen admins kunnen rollen toewijzen)
+- Rol `admin`, `user` of `student` op elk account (alleen admins kunnen rollen toewijzen)
 - **Gebruikersbeheer** (`Beheer → Gebruikers`) is alleen zichtbaar én toegankelijk voor admins;
   registratie is bewust niet mogelijk — accounts worden door een admin aangemaakt
-- Elke gebruiker ziet alleen zijn eigen uren; admins zien alles
+- **Privacy:** elke gebruiker — óók de admin — ziet alleen zijn eigen uren. Niemand kan andermans
+  registraties bekijken of bewerken.
 - Niet-ingelogd? Dan kom je altijd op de login terecht (ook bij onbekende URL's / 404's);
   ingelogd word je bij een onbekende URL naar het dashboard gestuurd
 

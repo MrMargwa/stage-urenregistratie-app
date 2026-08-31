@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'theme_mode', 'workbook_linked_at', 'workbook_path', 'target_hours', 'ui_preferences'])]
+#[Fillable(['name', 'email', 'password', 'role', 'theme_mode', 'target_hours', 'ui_preferences'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -35,11 +35,6 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === Role::Admin;
     }
 
-    public function hasLinkedWorkbook(): bool
-    {
-        return $this->workbook_linked_at !== null;
-    }
-
     public function timeEntries(): HasMany
     {
         return $this->hasMany(TimeEntry::class);
@@ -47,11 +42,9 @@ class User extends Authenticatable implements FilamentUser
 
     public function totalLoggedMinutes(): int
     {
-        $entries = $this->timeEntries()
-            ->select(['id', 'date', 'start_time', 'end_time', 'break_minutes'])
-            ->get();
-
-        return (int) $entries->sum('duration');
+        return (int) $this->timeEntries()
+            ->get()
+            ->sum(fn (TimeEntry $entry): int => $entry->duration);
     }
 
     public function totalLoggedHoursFormatted(): string
@@ -105,7 +98,6 @@ class User extends Authenticatable implements FilamentUser
             'role' => Role::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'workbook_linked_at' => 'datetime',
             'ui_preferences' => 'array',
         ];
     }

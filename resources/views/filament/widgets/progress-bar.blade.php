@@ -1,9 +1,9 @@
 @php
     $user = auth()->user();
-    $target = $user->target_hours;
+    $target = (int) $user->target_hours;
     $totalMinutes = $user->totalLoggedMinutes();
     $totalHours = $totalMinutes / 60;
-    $formatted = $user->totalLoggedHoursFormatted();
+    $formatted = App\Helpers\DurationHelper::formatMinutes($totalMinutes);
     $percentage = $target > 0 ? min(($totalHours / $target) * 100, 100) : 0;
     $remaining = $target > 0 ? max($target - $totalHours, 0) : 0;
 @endphp

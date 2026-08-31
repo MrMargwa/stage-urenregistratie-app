@@ -5,11 +5,10 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Get;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -82,21 +81,7 @@ class Settings extends Page
                             ->revealable()
                             ->rule('min:8')
                             ->nullable()
-                            ->same('password_confirmation')
                             ->hintIcon('heroicon-m-information-circle', tooltip: 'Leeg laten om je huidige wachtwoord te behouden · minimaal 8 tekens'),
-
-                        TextInput::make('password_confirmation')
-                            ->label('Nieuw wachtwoord bevestigen')
-                            ->password()
-                            ->revealable()
-                            ->dehydrated(false),
-
-                        TextInput::make('current_password')
-                            ->label('Huidige wachtwoord')
-                            ->password()
-                            ->revealable()
-                            ->required(fn (Get $get): bool => filled($get('password')))
-                            ->helperText('Vul je huidige wachtwoord in om het wachtwoord te wijzigen'),
                     ]),
 
                 Section::make('Stage')
@@ -128,15 +113,6 @@ class Settings extends Page
         ];
 
         if (filled($data['password'] ?? null)) {
-            if (! Hash::check($data['current_password'] ?? '', $user->password)) {
-                Notification::make()
-                    ->title('Huidige wachtwoord is onjuist')
-                    ->danger()
-                    ->send();
-
-                return;
-            }
-
             $clean['password'] = Hash::make($data['password']);
         }
 

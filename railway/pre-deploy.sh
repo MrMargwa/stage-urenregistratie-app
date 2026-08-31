@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Zorg dat het nginx-loggingspad bestaat zodat nginx kan opstarten
+mkdir -p /var/log/nginx
+
 echo "Waiting for database to become available..."
 MAX_ATTEMPTS=30
 attempt=0
