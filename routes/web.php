@@ -1,18 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('filament.admin.pages.dashboard');
-});
+Route::get('/', HomeController::class);
 
-Route::post('/theme', function (Request $request) {
-    $theme = $request->validate([
-        'theme' => 'required|in:dark,light,system',
-    ])['theme'];
-
-    $request->user()->update(['theme_mode' => $theme]);
-
-    return response()->json(['ok' => true, 'theme' => $theme]);
-})->middleware('auth')->name('theme.update');
+Route::post('/theme', ThemeController::class)->middleware('auth')->name('theme.update');
