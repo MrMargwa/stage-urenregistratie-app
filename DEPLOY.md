@@ -87,7 +87,7 @@ Geen Redis (alles via PostgreSQL) werkt ook prima — het is puur een snelheidso
 
 ## Stap 4 — Domein genereren
 
-1. App-service → **Settings** → **Networking** → **Generate Domain** (poort laat je standaard).
+1. App-service → **Settings** → **Networking** → **Generate Domain**. De **target port** moet gelijk zijn aan de poort waarop de app luistert: **8000** (zie `start.sh`). Railway stelt het domein in met target port `8000`, dus meestal hoef je niets te wijzigen. Pas de target port **niet** automatisch aan naar een handmatige `PORT`-variabele — die kun je beter weglaten.
 2. Railway geeft een URL zoals `https://stage-urenregistratie-app-production.up.railway.app`.
 3. Voeg die URL toe als variable: `APP_URL` = `https://<jouw-domein>` → app deployt opnieuw.
 
@@ -176,7 +176,7 @@ Nieuw sinds deze versie:
 |---|---|
 | Inloggen lukt, maar daarna `403 Forbidden` op `/admin` | Het `User`-model implementeert het `FilamentUser`-contract niet — Filament weigert dan élke user in productie (lokaal met `APP_ENV=local` lijkt het te werken). Fix: `User extends Authenticatable implements FilamentUser` mét `canAccessPanel(): bool` (staat in de repo). |
 | `500 Internal Server Error` op `/admin/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
-| `Application failed to respond` op het domein | App draait niet (meer) of Railway routeert naar de verkeerde poort. Check: 1) deployment-logs — draait Nginx op welke poort? 2) app-service → **Settings → Networking** → domein → **target port** moet gelijk zijn aan de luisterpoort ($PORT / 8080). 3) Stond de container midden in een herstart (crash-loop)? Zie de wachtlus-fix hieronder. |
+| `Application failed to respond` op het domein | **Meestal een port-mismatch.** De app (nginx) luistert op **8000** (= domein **target port**). Heeft Railway een handmatige `PORT`-variabele (bv. `8080`) die afwijkt, dan klopt de luisterpoort nooit. Oplossing: verwijder de handmatige `PORT`-variabele en check dat domein → **target port** = `8000`. Deploy-logs moeten `[start] nginx will listen on 0.0.0.0:8000` tonen. Zie je een crash-loop, check dan de wachtlus-fix hieronder. |
 | Build-log noemt `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert Nixpacks. Staat die er niet in? Zet hem dan handmatig: app-service → **Settings** → **Build** → Builder → **Nixpacks**, en redeploy. |
 | `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Nixpacks koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste (lockfile heeft ≥8.4.1 nodig). Opgelost door `"php": "^8.4"` + install-fase met `--no-dev`. |
 | `does not provide an export named 'styleText'` in de build-fase | Nixpacks gebruikte Node 18, maar Vite 8 vereist Node ≥20.19. Opgelost via `NIXPACKS_NODE_VERSION = '22'` (nixpacks.toml) + `"engines"` in package.json. |

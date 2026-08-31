@@ -1914,12 +1914,13 @@ vendor/bin/pint
 
 ### 24.3 Application failed to respond
 
-**Oorzaak:** De app draait niet of Railway routeert naar de verkeerde poort.
+**Oorzaak:** De app draait niet of Railway routeert naar de verkeerde poort (port-mismatch).
 
 **Oplossing:**
-1. Check deployment-logs — draait `artisan serve`?
-2. Settings → Networking → target port moet gelijk zijn aan de luisterpoort
-3. Check of de container in een crash-loop zit
+1. Check deployment-logs — de app (nginx) moet `[start] nginx will listen on 0.0.0.0:8000` tonen.
+2. Settings → Networking → domein **target port** moet gelijk zijn aan de luisterpoort (**8000**).
+3. Verwijder een evt. handmatige `PORT`-variabele die afwijkt van 8000.
+4. Check of de container in een crash-loop zit
 
 ### 24.4 SQLSTATE authentication method unknown
 

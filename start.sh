@@ -25,10 +25,12 @@ done
 echo "[start] php-fpm is up on 127.0.0.1:9000"
 
 # Inject the correct listen port into the nginx config (nginx reads the file directly,
-# so we substitute the __PORT__ placeholder with the container's PORT value).
-PORT_VALUE="${PORT:-8080}"
-sed -i "s/__PORT__/${PORT_VALUE}/g" /app/nginx.conf
-echo "[start] nginx will listen on 0.0.0.0:${PORT_VALUE}"
+# so we substitute the __PORT__ placeholder with the port Railway routeert naar).
+# Railway's domein 'target port' is 8000. Let een eventueel handmatig gezette PORT-
+# variabele NIET de routing-poort overschrijven (die kan afwijken, bv. 8080).
+LISTEN_PORT="${RAILWAY_LISTEN_PORT:-8000}"
+sed -i "s/__PORT__/${LISTEN_PORT}/g" /app/nginx.conf
+echo "[start] nginx will listen on 0.0.0.0:${LISTEN_PORT}"
 
 echo "[start] validating nginx config..."
 nginx -t -c /app/nginx.conf 2>&1 || { echo "[start] ERROR: nginx config invalid"; exit 1; }
