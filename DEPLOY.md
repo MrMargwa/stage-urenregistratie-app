@@ -38,6 +38,7 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
 | `SEED_ADMIN_PASSWORD` | sterk wachtwoord voor `admin@admin.com` (geen standaard in productie gebruiken!) |
 | `SEED_USER_PASSWORD` | (optioneel) wachtwoord voor de testaccount, standaard `Welkom1!23` |
+| `RUN_SEED` | **alleen de eerste keer** `true` zetten (zie Stap 6). Daarna weglaten. |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` — **alleen** als je een Redis-service toevoegt |
 
 > ⚠️ `${{Postgres.DATABASE_URL}}` verwijst naar de database-service. Heet jouw database-service anders (bijv. `postgres` of `database`), pas dan het eerste deel aan: `${{<servicenaam>.DATABASE_URL}}`.
@@ -102,10 +103,14 @@ De build gebruikt `nixpacks.toml` uit de repo:
 
 Bouwt het mis? Tab **Deployments** → klik op de build → logs lezen.
 
-## Stap 6 — Admin-gebruiker (automatisch)
+## Stap 6 — Admin-gebruiker (alleen eerste keer)
 
-De pre-deploy-stap draait `php artisan db:seed --force`, die via de `UsersSeeder` de standaardaccounts
-aanmaakt/bijwerkt (idempotent `updateOrCreate` op vaste e-mailadressen):
+De pre-deploy-stap draait **altijd** `php artisan migrate --force`. Daarnaast draait de seeder
+**alleen** als de variable `RUN_SEED=true` staat. Zet die variable dus bij de allereerste deploy
+(zodat de admin- en testaccounts worden aangemaakt), en **haal hem daarna weg**.
+
+Waarom? Zo seed je precies één keer. Migraties draaien bij elke deploy, maar er wordt nooit meer
+geseed zodra de site live is. Je ingevulde stage-uren en accounts blijven dus intact.
 
 - `admin@admin.com` (rol `admin`)
 - `testaccount01@example.com` (rol `user`)
@@ -119,8 +124,9 @@ Wachtwoorden komen uit omgevingsvariabelen, met een dev-standaard als fallback:
 
 > ⚠️ Omdat de fallback-wachtwoorden in de repo staan, zet je in Railway (productie) altijd
 > `SEED_ADMIN_PASSWORD` op een sterk wachtwoord. Op die manier is je admin-account niet met een
-> publiek bekend wachtwoord beveiligd. Wachtwoord wijzigen? Pas de variable aan → redeploy → de
-> seeder werkt het account bij.
+> publiek bekend wachtwoord beveiligd. deze wachtwoord geldt op het moment van seeden (de eerste keer).
+> Wil je later het admin-wachtwoord wijzigen, doe dat dan gewoon via de instellingenpagina in de app
+> (niet via de seeder).
 
 Log daarna in op `<jouw-domein>/dashboard`.
 
@@ -128,7 +134,7 @@ Log daarna in op `<jouw-domein>/dashboard`.
 
 - Elke `git push origin main` → Railway bouwt en deployt automatisch.
 - Migraties draaien bij elke deploy in de pre-deploy-stap (met wachtlus tot de database online is).
-- De standaardaccounts (`admin@admin.com`, `testaccount01@example.com`) worden bij elke deploy via `UsersSeeder` bijgewerkt (idempotent, verwijdert niets).
+- Seeding draait **niet** meer automatisch: alleen als `RUN_SEED=true` staat (eerste opzet).
 - Exports werken direct (`QUEUE_CONNECTION=sync`, geen worker nodig).
 - De app wordt geserved door Nginx + PHP-FPM (multi-process) in plaats van de single-threaded `php artisan serve` — dit is de grootste snelheidswinst ten opzichte van voorheen.
 
@@ -152,11 +158,9 @@ nieuwe tabellen). Nooit kolommen droppen of data herschrijven in een migratie �
 deployen zonder dataverlies gegarandeerd.
 
 > ✅ **Je gebruikersdata is veilig bij elke deploy.** De pre-deploy-stap (`railway/pre-deploy.sh`) draait
-> alleen `php artisan migrate --force` (additief, verwijdert nooit data) en `php artisan db:seed` via de
-> `UsersSeeder` (idempotent `updateOrCreate` op vaste e-mailadressen, verwijdert nooit bestaande data).
-> Er wordt **nooit** `migrate:fresh`, `migrate:refresh` of een reset-seed gedraaid op Railway — zo hou je
-> de ingevulde stage-uren van alle users intact. Alleen de accounts met een van de twee vaste
-> e-mailadressen (`admin@admin.com`, `testaccount01@example.com`) worden bijgewerkt/gewaarborgd.
+> altijd `php artisan migrate --force` (additief, verwijdert nooit data). Seeden gebeurt **alleen** als
+> je `RUN_SEED=true` zet. Er wordt **nooit** `migrate:fresh`, `migrate:refresh` of een reset-seed gedraaid
+> op Railway — zo hou je de ingevulde stage-uren van alle users intact.
 
 Nieuw sinds deze versie:
 

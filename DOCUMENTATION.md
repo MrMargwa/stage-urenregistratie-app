@@ -1871,12 +1871,13 @@ Railway gebruikt MySQL 8 met `caching_sha2_password` authenticatie. De PHP-build
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
 | `SEED_ADMIN_PASSWORD` | Sterk wachtwoord voor de admin (`admin@admin.com`) |
 
-### 23.6 Admin-gebruiker (automatisch)
+### 23.6 Admin-gebruiker (alleen eerste keer)
 
-Bij elke deploy draait de pre-deploy-stap (`railway/pre-deploy.sh`) `php artisan db:seed`, die via de
-`UsersSeeder` de standaardaccounts `admin@admin.com` en `testaccount01@example.com` aanmaakt/bijwerkt
-(idempotent `updateOrCreate` — verwijdert nooit bestaande data). Wachtwoorden komen uit
-`SEED_ADMIN_PASSWORD` / `SEED_USER_PASSWORD`.
+De pre-deploy-stap (`railway/pre-deploy.sh`) draait **altijd** `php artisan migrate --force`. De seeder
+draait alleen als de variable `RUN_SEED=true` staat (zet hem in bij de allereerste deploy en haal hem
+daarna weg). Via de `UsersSeeder` worden dan de standaardaccounts `admin@admin.com` en
+`testaccount01@example.com` aangemaakt (idempotent `updateOrCreate` — verwijdert nooit bestaande data).
+Wachtwoorden komen uit `SEED_ADMIN_PASSWORD` / `SEED_USER_PASSWORD`.
 
 ### 23.7 Optionele builds
 

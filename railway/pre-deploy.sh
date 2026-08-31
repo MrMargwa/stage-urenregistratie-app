@@ -22,9 +22,16 @@ done
 
 echo "Migrations complete."
 
-# Admin + test-accounts aanmaken/bijwerken via de UsersSeeder (idempotent:
-# updateOrCreate op vaste e-mailadressen, verwijdert nooit bestaande data).
-php artisan db:seed --force --no-interaction
+# Admin-account alleen aanmaken/bijwerken bij eerste opzet (RUN_SEED=true).
+# Daarna NIET meer seeden — je wilt je bestaande data (uren, accounts) intact houden.
+# De UsersSeeder is idempotent en raakt time_entries niet aan, maar zodra de site
+# live draait is seeden niet meer nodig.
+if [ "${RUN_SEED:-false}" = "true" ]; then
+    echo "RUN_SEED=true gevonden => database seeden (admin + testaccount)..."
+    php artisan db:seed --force --no-interaction
+else
+    echo "RUN_SEED niet op true => geen seeding bij deze deploy (bestaande data blijft intact)."
+fi
 
 echo "Caching config, routes and views..."
 php artisan config:cache
