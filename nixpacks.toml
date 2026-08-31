@@ -8,7 +8,8 @@ nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip', 'php84Extension
 [phases.install]
 cmds = [
     'composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts',
-    'npm ci --ignore-scripts'
+    'npm ci --ignore-scripts',
+    'mkdir -p /var/log/nginx /var/cache/nginx'
 ]
 
 [phases.build]
