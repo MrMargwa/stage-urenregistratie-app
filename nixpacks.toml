@@ -16,5 +16,5 @@ cmds = [
 cmds = ['php artisan package:discover --ansi && npm run build']
 
 [start]
-cmd = 'mkdir -p /var/log/nginx /var/cache/nginx && node /assets/scripts/prestart.mjs /assets/nginx.template.conf /nginx.conf && (php-fpm -y /assets/php-fpm.conf & nginx -c /nginx.conf)'
+cmd = 'sh /app/start.sh'
 
