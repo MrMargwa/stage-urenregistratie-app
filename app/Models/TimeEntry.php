@@ -62,7 +62,45 @@ class TimeEntry extends Model
                         'end_time' => 'De eindtijd kan niet voor de begintijd liggen.',
                     ]);
                 }
+
+                $entry->assertNoOverlap();
             }
         });
+    }
+
+    /**
+     * Controleert of deze entry overlapt met een andere entry van dezelfde
+     * gebruiker op dezelfde dag (exclusief de huidige rij bij een update).
+     *
+     * @throws ValidationException
+     */
+    public function assertNoOverlap(): void
+    {
+        if (! $this->user_id || ! $this->date || ! $this->start_time || ! $this->end_time) {
+            return;
+        }
+
+        $start = $this->start_time->format('H:i:s');
+        $end = $this->end_time->format('H:i:s');
+
+        $overlap = TimeEntry::query()
+            ->where('user_id', $this->user_id)
+            ->whereDate('date', $this->date->toDateString())
+            ->where('id', '!=', $this->id)
+            ->where(function ($q) use ($start, $end): void {
+                $q->whereBetween('start_time', [$start, $end])
+                    ->orWhereBetween('end_time', [$start, $end])
+                    ->orWhere(function ($q) use ($start, $end): void {
+                        $q->where('start_time', '<=', $start)
+                            ->where('end_time', '>=', $end);
+                    });
+            })
+            ->exists();
+
+        if ($overlap) {
+            throw ValidationException::withMessages([
+                'start_time' => 'Deze registratie overlapt met een bestaande registratie op deze dag.',
+            ]);
+        }
     }
 }

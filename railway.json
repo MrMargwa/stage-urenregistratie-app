@@ -4,6 +4,6 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "startCommand": "php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan migrate --force && PHP_CLI_SERVER_WORKERS=1 php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
+        "preDeployCommand": "chmod +x ./railway/pre-deploy.sh && sh ./railway/pre-deploy.sh"
     }
 }

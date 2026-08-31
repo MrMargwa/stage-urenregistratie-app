@@ -2,9 +2,7 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries\Schemas;
 
-use App\Models\User;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
@@ -16,15 +14,6 @@ class TimeEntryForm
     {
         return $schema
             ->components([
-                Select::make('user_id')
-                    ->label('Gebruiker')
-                    ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
-                    ->searchable()
-                    ->preload()
-                    ->required()
-                    ->default(auth()->id())
-                    ->hidden(),
-
                 DatePicker::make('date')
                     ->label('Datum')
                     ->displayFormat('dd-mm-YYYY')

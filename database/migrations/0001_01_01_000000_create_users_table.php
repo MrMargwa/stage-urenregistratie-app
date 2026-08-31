@@ -20,8 +20,6 @@ return new class extends Migration
             $table->string('role', 20)->default('user')->index();
             $table->string('theme_mode', 20)->default('dark');
             $table->string('accent_color', 20)->nullable();
-            $table->timestamp('workbook_linked_at')->nullable();
-            $table->string('workbook_path')->nullable();
             $table->integer('target_hours')->nullable();
             $table->rememberToken();
             $table->timestamps();

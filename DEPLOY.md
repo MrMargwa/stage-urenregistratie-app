@@ -4,8 +4,9 @@ Deze app draait online op Railway met twee services in één project:
 
 | Service | Wat het doet | Kosten |
 |---|---|---|
-| **App** (PHP 8.4 via Nixpacks) | host de Laravel-app | binnen je $5-trial, daarna $1/maand (Free-plan) |
+| **App** (PHP 8.4 via Nixpacks) | host de Laravel-app via Nginx + PHP-FPM | binnen je $5-trial, daarna $1/maand (Free-plan) |
 | **PostgreSQL** | beheerde database (first-party Railway-service, direct in het menu) | idem |
+| **Redis** (aanbevolen, optioneel) | in-memory cache + sessions + exports-queue | binnen je $5-trial |
 
 Deployen gaat automatisch: elke push naar `main` triggert een nieuwe build.
 
@@ -31,47 +32,111 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `APP_KEY` | genereer lokaal: `php artisan key:generate --show` |
 | `DB_CONNECTION` | `pgsql` |
 | `DB_URL` | `${{Postgres.DATABASE_URL}}` |
-| `SESSION_DRIVER` | `database` |
-| `QUEUE_CONNECTION` | `sync` |
-| `CACHE_STORE` | `database` |
-| `ADMIN_EMAIL` | jouw admin e-mailadres |
-| `ADMIN_PASSWORD` | sterk wachtwoord voor de admin-user |
-| `ADMIN_NAME` | (optioneel) weergavenaam, standaard `Admin` |
+| `LOG_CHANNEL` | `stderr` (Railway logt naar stderr; `single`/file-logging is vluchtig en verdwijnt) |
+| `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
+| `QUEUE_CONNECTION` | `sync` (of `redis` voor async exports) |
+| `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
+| `SEED_ADMIN_PASSWORD` | sterk wachtwoord voor `admin@admin.com` (geen standaard in productie gebruiken!) |
+| `SEED_USER_PASSWORD` | (optioneel) wachtwoord voor de testaccount, standaard `Welkom1!23` |
+| `RUN_SEED` | **alleen de eerste keer** `true` zetten (zie Stap 6). Daarna weglaten. |
+| `REDIS_URL` | `${{Redis.REDIS_URL}}` — **alleen** als je een Redis-service toevoegt |
 
 > ⚠️ `${{Postgres.DATABASE_URL}}` verwijst naar de database-service. Heet jouw database-service anders (bijv. `postgres` of `database`), pas dan het eerste deel aan: `${{<servicenaam>.DATABASE_URL}}`.
+>
+> 🔎 **Deploy-crash: `connection refused 127.0.0.1:5432 ... database laravel`?** Dit betekent dat `DB_URL` (of `DB_HOST`/`DB_PORT`/`DB_DATABASE`) **niet** (goed) op de app-service staat. Zonder `DB_URL` valt Laravel terug op de defaults `127.0.0.1:5432`/`laravel`/`root` uit `config/database.php:90-94` — vandaar `laravel` als databasenaam. Je gebruikt de key **`DB_URL`** (niet `DATABASE_URL`, die leest Laravel niet uit deze config). Controleer drie dingen:
+> 1. De value is van de vorm `${{<servicenaam>.DATABASE_URL}}` **zonder aanhalingstekens** eromheen (een `"${{...}}"` wordt als letterlijke tekst doorgegeven en is een ongeldige URL).
+> 2. `<servicenaam>` is **exact** de servicenaam van je Postgres-service (hoofdlettergevoelig, bijv. `Postgres-5c9fa272-...`).
+> 3. De variable staat op de **app-service**, niet op de database-service.
+>
+> 💡 **Waarom Redis?** Zonder Redis slaat de app cache en sessions op in PostgreSQL. Elke pagina-laad is dan meerdere extra DB-rondes over het netwerk (trager). Met Redis zijn dat snelle in-memory reads. Lokaal merk je het verschil niet (MySQL op localhost), online wél — dit is naast Nginx/PHP-FPM de grootste snelheidswinst. Wil je het eenvoudig houden, dan volstaat `database` ook prima.
+>
+> 🚀 **Gratis snelheidswinsten zonder Redis** (staan al in deze repo):
+> 1. **OPcache** — ingeschakeld via `nixpacks.toml` (`php84Extensions.opcache`). PHP hercompiled op die manier geen code-bundels bij elke request. Dit is de grootste gratis PHP-winst op Railway.
+> 2. **Gecachte config/routes/views** — draait al in `railway/pre-deploy.sh`.
+> 3. **`LOG_CHANNEL=stderr`** — zet dit in Railway; file-logging is vluchtig en onzichtbaar in de Railway-logs.
+> 4. **Minder DB-queries per request** — het dashboard laadt nu de week-totalen efficiënter, en admin-views eager-loaden gerelateerde records (geen N+1).
 
 Elke wijziging in Variables triggert automatisch een herstart.
 
-## Stap 3 — Domein genereren
+## Stap 3 — (Optioneel) Redis toevoegen voor snelheid
+
+1. Zelfde project → **+ New** → **Database** → **Redis**.
+2. Railway maakt op de **Redis-service** automatisch verbindingsvariabelen aan
+   (`REDIS_URL`, `REDISHOST`, `REDISPORT`, `REDISPASSWORD`, `REDISUSER`) — daar hoef je niets aan te doen.
+3. Zet op de **app-service** de variable:
+   - `REDIS_URL` = `${{Redis.REDIS_URL}}` (of `${{<servicenaam>.REDIS_URL}}` als je Redis anders heet).
+     Dit is een **service-referentie**: Railway vult automatisch de interne URL van je Redis-service in.
+     Niet zelf de URL in elkaar zetten, gewoon deze referentie gebruiken.
+4. Zet `CACHE_STORE=redis` en `SESSION_DRIVER=redis` (en optioneel `QUEUE_CONNECTION=redis`).
+5. De build in `nixpacks.toml` installeert al `php84Extensions.redis`, dus niets extra's nodig in code.
+
+**Werkt de verbinding?** In de runtime-logs (of via `railway run`) kun je testen met:
+
+```bash
+redis-cli -u "$REDIS_URL" ping
+# of via Laravel:
+php artisan tinker --execute="dump(Cache::store('redis')->put('test', 1, 10));"
+```
+
+> ⚠️ Denk aan een **order van schakelen**: zet eerst de Redis-service + `REDIS_URL` erbij, laat de app
+> herstarten, en **pas daarna** `CACHE_STORE`/`SESSION_DRIVER` naar `redis` omzetten. Anders slaat de app
+> sessies nergens op en word je uitgelogd. (Praktisch: zet alles in één keer en laat één deploy
+> volledig afronden.)
+
+Geen Redis (alles via PostgreSQL) werkt ook prima — het is puur een snelheidsoptimalisatie.
+
+## Stap 4 — Domein genereren
 
 1. App-service → **Settings** → **Networking** → **Generate Domain** (poort laat je standaard).
 2. Railway geeft een URL zoals `https://stage-urenregistratie-app-production.up.railway.app`.
 3. Voeg die URL toe als variable: `APP_URL` = `https://<jouw-domein>` → app deployt opnieuw.
 
-## Stap 4 — Eerste build controleren
+## Stap 5 — Eerste build controleren
 
 De build gebruikt `nixpacks.toml` uit de repo:
 
-- PHP 8.4 mét de `intl`-extensie (verplicht voor Filament)
+- PHP 8.4 mét de `intl`- en `redis`-extensies (intl is verplicht voor Filament, redis alleen nodig als je de Redis-service gebruikt)
 - `composer install --no-dev`
 - `npm ci && npm run build` (Vite-assets)
-- Start (uit `railway.json` — dit overschrijft het startcommando van Nixpacks): wachtlus tot de database online is → `migrate --force` → admin-user seeden via `AdminSeeder` → `artisan serve` met meerdere workers op `$PORT`
+- **Serving:** de app draait via **Nginx + PHP-FPM** (het native startcommando van de Nixpacks-PHP-provider, meerdere PHP-processen) — niet meer via de single-threaded `php artisan serve`.
+- Migraties + admin-seeding draaien in de **pre-deploy-stap** (`railway/pre-deploy.sh`, via `preDeployCommand` in `railway.json`), met wachtlus tot de database online is.
 
 Bouwt het mis? Tab **Deployments** → klik op de build → logs lezen.
 
-## Stap 5 — Admin-gebruiker (automatisch)
+## Stap 6 — Admin-gebruiker (alleen eerste keer)
 
-De online database is vers/leeg, maar de admin-user wordt **automatisch aangemaakt** bij elke start: het startcommando draait `AdminSeeder`, die via `updateOrCreate` de gebruiker aanmaakt/bijwerkt op basis van de variables `ADMIN_EMAIL` + `ADMIN_PASSWORD` (zie stap 2). Geen variables gezet? Dan slaat de seeder netjes over.
+De pre-deploy-stap draait **altijd** `php artisan migrate --force`. Daarnaast draait de seeder
+**alleen** als de variable `RUN_SEED=true` staat. Zet die variable dus bij de allereerste deploy
+(zodat de admin- en testaccounts worden aangemaakt), en **haal hem daarna weg**.
 
-Wachtwoord wijzigen? Pas gewoon `ADMIN_PASSWORD` aan in Railway — bij de volgende herstart wordt de gebruiker bijgewerkt.
+Waarom? Zo seed je precies één keer. Migraties draaien bij elke deploy, maar er wordt nooit meer
+geseed zodra de site live is. Je ingevulde stage-uren en accounts blijven dus intact.
 
-Log daarna in op `<jouw-domein>/admin`.
+- `admin@admin.com` (rol `admin`)
+- `testaccount01@example.com` (rol `user`)
+
+Wachtwoorden komen uit omgevingsvariabelen, met een dev-standaard als fallback:
+
+| Variable | Gebruiker | Standaard (lokaal) |
+|---|---|---|
+| `SEED_ADMIN_PASSWORD` | `admin@admin.com` | `Welkom1!23` |
+| `SEED_USER_PASSWORD` | `testaccount01@example.com` | `Welkom1!23` |
+
+> ⚠️ Omdat de fallback-wachtwoorden in de repo staan, zet je in Railway (productie) altijd
+> `SEED_ADMIN_PASSWORD` op een sterk wachtwoord. Op die manier is je admin-account niet met een
+> publiek bekend wachtwoord beveiligd. deze wachtwoord geldt op het moment van seeden (de eerste keer).
+> Wil je later het admin-wachtwoord wijzigen, doe dat dan gewoon via de instellingenpagina in de app
+> (niet via de seeder).
+
+Log daarna in op `<jouw-domein>/dashboard`.
 
 ## Hoe verder werkt het vanaf nu
 
 - Elke `git push origin main` → Railway bouwt en deployt automatisch.
-- Migraties draaien bij elke containerstart (met wachtlus tot de database online is).
+- Migraties draaien bij elke deploy in de pre-deploy-stap (met wachtlus tot de database online is).
+- Seeding draait **niet** meer automatisch: alleen als `RUN_SEED=true` staat (eerste opzet).
 - Exports werken direct (`QUEUE_CONNECTION=sync`, geen worker nodig).
+- De app wordt geserved door Nginx + PHP-FPM (multi-process) in plaats van de single-threaded `php artisan serve` — dit is de grootste snelheidswinst ten opzichte van voorheen.
 
 ## Nieuwe functionaliteit & migratie-gedrag (aug 2026)
 
@@ -79,8 +144,8 @@ De app is multi-user geworden. Wat er bij het deployen van deze versie met je be
 
 | Wijziging | Effect op bestaande data |
 |---|---|
-| Kolom `role` op `users` | Bestaande accounts krijgen default `user`. De `AdminSeeder` zet bij de start het account uit `ADMIN_EMAIL` netjes op `admin`. |
-| Kolom `user_id` op `time_entries` | Bestaande uren worden tijdens de migratie automatisch gekoppeld aan jouw admin-account (`ADMIN_EMAIL`), zodat niets zoekraakt of "eigenaarloos" wordt. |
+| Kolom `role` op `users` | Bestaande accounts krijgen default `user`. De `UsersSeeder` zorgt dat `admin@admin.com` de rol `admin` houdt. |
+| Kolom `user_id` op `time_entries` | Bestaande uren worden tijdens de migratie automatisch gekoppeld aan jouw admin-account, zodat niets zoekraakt of "eigenaarloos" wordt. |
 | Kolommen `theme_mode` + `accent_color` op `users` | Krijgen defaults (`dark` / `cyan`); gedrag verandert niet. |
 | Kolom `workbook_linked_at` op `users` | Nullable, geen effect op bestaande data. Gebruikers koppelen zelf hun Excel-werkblad. |
 
@@ -91,6 +156,11 @@ bij het downloaden opnieuw uit de database gegenereerd, dus het is altijd actuee
 **Regel voor toekomstige migraties:** altijd additief (nieuwe kolommen met `default()` of nullable,
 nieuwe tabellen). Nooit kolommen droppen of data herschrijven in een migratie — dan blijft
 deployen zonder dataverlies gegarandeerd.
+
+> ✅ **Je gebruikersdata is veilig bij elke deploy.** De pre-deploy-stap (`railway/pre-deploy.sh`) draait
+> altijd `php artisan migrate --force` (additief, verwijdert nooit data). Seeden gebeurt **alleen** als
+> je `RUN_SEED=true` zet. Er wordt **nooit** `migrate:fresh`, `migrate:refresh` of een reset-seed gedraaid
+> op Railway — zo hou je de ingevulde stage-uren van alle users intact.
 
 Nieuw sinds deze versie:
 
@@ -106,12 +176,12 @@ Nieuw sinds deze versie:
 |---|---|
 | Inloggen lukt, maar daarna `403 Forbidden` op `/admin` | Het `User`-model implementeert het `FilamentUser`-contract niet — Filament weigert dan élke user in productie (lokaal met `APP_ENV=local` lijkt het te werken). Fix: `User extends Authenticatable implements FilamentUser` mét `canAccessPanel(): bool` (staat in de repo). |
 | `500 Internal Server Error` op `/admin/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
-| `Application failed to respond` op het domein | App draait niet (meer) of Railway routeert naar de verkeerde poort. Check: 1) deployment-logs — draait `artisan serve` en op welke poort? 2) app-service → **Settings → Networking** → domein → **target port** moet gelijk zijn aan de luisterpoort uit de logs (bijv. `8080`). 3) Stond de container midden in een herstart (crash-loop)? Zie de wachtlus-fix hieronder. |
+| `Application failed to respond` op het domein | App draait niet (meer) of Railway routeert naar de verkeerde poort. Check: 1) deployment-logs — draait Nginx op welke poort? 2) app-service → **Settings → Networking** → domein → **target port** moet gelijk zijn aan de luisterpoort ($PORT / 8080). 3) Stond de container midden in een herstart (crash-loop)? Zie de wachtlus-fix hieronder. |
 | Build-log noemt `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert Nixpacks. Staat die er niet in? Zet hem dan handmatig: app-service → **Settings** → **Build** → Builder → **Nixpacks**, en redeploy. |
 | `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Nixpacks koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste (lockfile heeft ≥8.4.1 nodig). Opgelost door `"php": "^8.4"` + install-fase met `--no-dev`. |
 | `does not provide an export named 'styleText'` in de build-fase | Nixpacks gebruikte Node 18, maar Vite 8 vereist Node ≥20.19. Opgelost via `NIXPACKS_NODE_VERSION = '22'` (nixpacks.toml) + `"engines"` in package.json. |
 | `SQLSTATE[HY000] [2054] authentication method unknown [caching_sha2_password]` bij starten | Er staat nog een **MySQL**-service verbonden — de PHP-build (libmariadb) ondersteunt die auth niet. Vervang door PostgreSQL: verwijder de MySQL-service, + New → Database → PostgreSQL, en wijs `DB_URL` naar `${{<servicenaam>.DATABASE_URL}}` met `DB_CONNECTION=pgsql`. |
-| `SQLSTATE[HY000] [2002] Connection refused` of `SQLSTATE[08006] [7] ... database system is starting up` bij starten | Race tussen app- en DB-start (database nog niet online). Het start-commando in `nixpacks.toml` heeft een wachtlus (`until php artisan migrate --force; do sleep 5; done`) die dit opvangt — zie je het nog, check dan of de nieuwste deployment de lus bevat. |
+| `SQLSTATE[HY000] [2002] Connection refused` of `SQLSTATE[08006] [7] ... database system is starting up` bij starten | Race tussen app- en DB-start (database nog niet online). De pre-deploy-stap (`railway/pre-deploy.sh`) heeft een wachtlus (`until php artisan migrate --force; do sleep 5; done`) die dit opvangt — zie je het nog, check dan of de nieuwste deployment de lus bevat. |
 | `could not find driver` of `Call to undefined function pg_connect()` bij migreren | De `pdo_pgsql`-extensie ontbreekt in de build — check of `nixpacks.toml` `php84Extensions.pdo_pgsql` in de setup-fase heeft staan en trigger een redeploy (**Deployments** → ⋯ → Redeploy). |
 | `Class "Filament\PanelProvider" not found` of intl-fout | Build gebruikte geen `nixpacks.toml` — check of het bestand gepusht is en trigger een redeploy (**Deployments** → ⋯ → Redeploy). |
 | `No application encryption key has been specified` | `APP_KEY` ontbreekt — stap 2. |

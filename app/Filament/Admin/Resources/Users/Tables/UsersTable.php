@@ -46,9 +46,7 @@ class UsersTable
             ->filters([
                 SelectFilter::make('role')
                     ->label('Rol')
-                    ->options(fn () => collect(Role::cases())
-                        ->mapWithKeys(fn (Role $role) => [$role->value => $role->label()])
-                        ->toArray()),
+                    ->options(Role::options()),
             ])
             ->recordActions([
                 EditAction::make(),

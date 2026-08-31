@@ -27,9 +27,7 @@ class UserForm
 
                 Select::make('role')
                     ->label('Rol')
-                    ->options(fn () => collect(Role::cases())
-                        ->mapWithKeys(fn (Role $role) => [$role->value => $role->label()])
-                        ->toArray())
+                    ->options(Role::options())
                     ->required()
                     ->default(Role::User),
 

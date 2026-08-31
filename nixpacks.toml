@@ -3,13 +3,18 @@ NIXPACKS_PHP_VERSION = '8.4'
 NIXPACKS_NODE_VERSION = '22'
 
 [phases.setup]
-nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip', 'php84Extensions.pdo_pgsql']
+nixPkgs = ['...', 'php84Extensions.intl', 'php84Extensions.zip', 'php84Extensions.pdo_pgsql', 'php84Extensions.redis', 'php84Extensions.opcache']
 
 [phases.install]
 cmds = [
     'composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts',
-    'npm ci --ignore-scripts'
+    'npm ci --ignore-scripts',
+    'mkdir -p /var/log/nginx /var/cache/nginx'
 ]
 
 [phases.build]
 cmds = ['php artisan package:discover --ansi && npm run build']
+
+[start]
+cmd = 'sh /app/start.sh'
+

@@ -5,10 +5,10 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -81,14 +81,7 @@ class Settings extends Page
                             ->revealable()
                             ->rule('min:8')
                             ->nullable()
-                            ->same('password_confirmation')
                             ->hintIcon('heroicon-m-information-circle', tooltip: 'Leeg laten om je huidige wachtwoord te behouden · minimaal 8 tekens'),
-
-                        TextInput::make('password_confirmation')
-                            ->label('Nieuw wachtwoord bevestigen')
-                            ->password()
-                            ->revealable()
-                            ->dehydrated(false),
                     ]),
 
                 Section::make('Stage')
@@ -113,15 +106,17 @@ class Settings extends Page
         /** @var User $user */
         $user = auth()->user();
 
-        if (blank($data['password'] ?? null)) {
-            unset($data['password']);
-        } else {
-            $data['password'] = Hash::make($data['password']);
+        $clean = [
+            'name' => $data['name'] ?? null,
+            'email' => $data['email'] ?? null,
+            'target_hours' => $data['target_hours'] ?? null,
+        ];
+
+        if (filled($data['password'] ?? null)) {
+            $clean['password'] = Hash::make($data['password']);
         }
 
-        unset($data['password_confirmation']);
-
-        $user->update($data);
+        $user->update($clean);
 
         Notification::make()
             ->title('Instellingen opgeslagen')

@@ -19,7 +19,7 @@ class ListTimeEntries extends ListRecords
             ExportAction::make()
                 ->exporter(TimeEntryExporter::class)
                 ->formats([ExportFormat::Xlsx])
-                ->label('Exporteren')
+                ->label('Exporteren (.xlsx)')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('danger'),
 

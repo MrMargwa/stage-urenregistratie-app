@@ -48,11 +48,26 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
             Text::make($this->weekLabel)
                 ->size('lg')
                 ->weight('bold'),
+            Text::make($this->weekSummary)
+                ->color('gray'),
             Text::make('Totaal deze week: ' . $this->totalHours)
                 ->weight('bold')
                 ->color('primary'),
             EmbeddedTable::make(),
         ]);
+    }
+
+    public function getWeekSummaryProperty(): string
+    {
+        $days = $this->weekEntries;
+
+        $loggedDays = collect($days)->filter(fn (array $day): bool => $day['total_minutes'] > 0)->count();
+
+        if ($loggedDays === 0) {
+            return 'Nog geen uren geregistreerd in deze week.';
+        }
+
+        return "{$loggedDays} dag(en) met uren in deze week.";
     }
 
     protected function makeButtonRow(): Flex
@@ -104,9 +119,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->label('Pauze')
                     ->formatStateUsing(fn (int $state): string => $state . ' min'),
                 TextColumn::make('description')
-                    ->label('Omschrijving')
-                    ->limit(50)
-                    ->tooltip(fn (?string $state): ?string => $state),
+                    ->label('Omschrijving'),
                 TextColumn::make('duration')
                     ->label('Duur')
                     ->formatStateUsing(fn (int $state): string => DurationHelper::formatMinutes($state))

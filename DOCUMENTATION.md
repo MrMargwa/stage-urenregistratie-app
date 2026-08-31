@@ -49,7 +49,7 @@
 | Programmeertaal | PHP 8.4 |
 | Frontend | Blade + Livewire (via Filament) + Tailwind CSS 4 + Alpine.js |
 | Database | SQLite (development), MySQL (Docker lokaal), PostgreSQL (productie/Railway) |
-| Export library | OpenSpout (via Maatwebsite Excel) |
+| Export library | OpenSpout (direct gebruik) |
 | Build tools | Vite 8 + laravel-vite-plugin |
 | Test framework | Pest PHP 5 |
 | Deployment | Railway (Nixpacks) |
@@ -518,11 +518,12 @@ php artisan test                  # Voert alle Pest tests uit
 
 ### 9.5 Inloggen (development)
 
-Na `migrate --seed` kun je inloggen met:
+Na `migrate --seed` kun je inloggen met (standaard dev-wachtwoorden, overschrijfbaar via
+`SEED_ADMIN_PASSWORD` / `SEED_USER_PASSWORD`):
 
-| Rol | E-mail | Wachtwoord |
+| Rol | E-mail | Wachtwoord (standaard) |
 |---|---|---|
-| Admin | `admin@admin.com` | `Admin1!23` |
+| Admin | `admin@admin.com` | `Welkom1!23` |
 | Gebruiker | `testaccount01@example.com` | `Welkom1!23` |
 
 ### 9.6 Builden voor productie
@@ -564,20 +565,34 @@ Dit genereert gestylede en geminificeerde CSS- en JS-bestanden in `public/build/
 
 | Variabele | Standaard | Doel |
 |---|---|---|
-| `SESSION_DRIVER` | `database` | Waar sessies worden opgeslagen |
+| `SESSION_DRIVER` | `database` | Waar sessies worden opgeslagen (`database`, `redis` of `file`) |
 | `SESSION_LIFETIME` | `120` | Sessie-duur in minuten |
-| `CACHE_STORE` | `database` | Waar cache wordt opgeslagen |
+| `CACHE_STORE` | `database` | Waar cache wordt opgeslagen (`database`, `redis` of `file`) |
 | `QUEUE_CONNECTION` | `sync` | Queue driver (`sync` = direct uitvoeren) |
 
-### 10.4 Productie-variabelen (Railway)
+Op Railway is `redis` de snelste keuze voor `SESSION_DRIVER` en `CACHE_STORE`: zonder Redis gaat elke
+pagina-laad een paar extra DB-rondes naar PostgreSQL. Lokaal (localhost) merk je daar niets van.
+
+### 10.4 Redis-variabelen
 
 | Variabele | Doel |
 |---|---|
-| `ADMIN_EMAIL` | E-mailadres van de admin-user die automatisch wordt aangemaakt |
-| `ADMIN_PASSWORD` | Wachtwoord van de admin-user |
-| `ADMIN_NAME` | (Optioneel) weergavenaam van de admin |
+| `REDIS_URL` | Volledige Redis URL, op Railway bijv. `${{Redis.REDIS_URL}}`. Overbodig bij lokale MySQL/SQLite-dev (daar gebruik je de losse `REDIS_HOST`/`REDIS_PORT`) |
+| `REDIS_CLIENT` | `phpredis` (geïnstalleerd in de build via `nixpacks.toml`) |
 
-### 10.5 Waar variabelen worden gebruikt
+Op Railway maakt de Redis-service zelf automatisch variabelen aan (`REDIS_URL`, `REDISHOST`,
+`REDISPORT`, `REDISPASSWORD`, `REDISUSER`). Op de **app-service** verwijs je daar simpelweg naar met
+een service-referentie: `REDIS_URL = ${{Redis.REDIS_URL}}` (de servicenaam `Redis` vervang je door je
+werkelijke naam). Je hoeft de URL nooit zelf te bouwen.
+
+### 10.5 Productie-variabelen (Railway)
+
+| Variabele | Doel |
+|---|---|
+| `SEED_ADMIN_PASSWORD` | Wachtwoord voor de admin (`admin@admin.com`); altijd zetten in productie, geen standaard gebruiken |
+| `SEED_USER_PASSWORD` | (Optioneel) wachtwoord voor de testaccount, standaard `Welkom1!23` |
+
+### 10.6 Waar variabelen worden gebruikt
 
 | Variabele | Gebruikt in |
 |---|---|
@@ -586,6 +601,7 @@ Dit genereert gestylede en geminificeerde CSS- en JS-bestanden in `public/build/
 | `SESSION_DRIVER` | `config/session.php` |
 | `QUEUE_CONNECTION` | `config/queue.php` |
 | `CACHE_STORE` | `config/cache.php` |
+| `REDIS_URL` | `config/database.php` |
 | `MAIL_*` | `config/mail.php` |
 
 > **Let op:** Toon nooit echte geheimen, API keys, tokens of wachtwoorden in documentatie.
@@ -1850,15 +1866,18 @@ Railway gebruikt MySQL 8 met `caching_sha2_password` authenticatie. De PHP-build
 | `APP_KEY` | Genereer lokaal: `php artisan key:generate --show` |
 | `DB_CONNECTION` | `pgsql` |
 | `DB_URL` | `${{Postgres.DATABASE_URL}}` |
-| `SESSION_DRIVER` | `database` |
+| `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
 | `QUEUE_CONNECTION` | `sync` |
-| `CACHE_STORE` | `database` |
-| `ADMIN_EMAIL` | Jouw admin e-mailadres |
-| `ADMIN_PASSWORD` | Sterk wachtwoord |
+| `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
+| `SEED_ADMIN_PASSWORD` | Sterk wachtwoord voor de admin (`admin@admin.com`) |
 
-### 23.6 Admin-gebruiker (automatisch)
+### 23.6 Admin-gebruiker (alleen eerste keer)
 
-Bij elke containerstart draait het startcommando de `AdminSeeder`. Deze gebruikt `updateOrCreate` op basis van `ADMIN_EMAIL` en `ADMIN_PASSWORD`. Geen variables gezet? Dan slaat de seeder over.
+De pre-deploy-stap (`railway/pre-deploy.sh`) draait **altijd** `php artisan migrate --force`. De seeder
+draait alleen als de variable `RUN_SEED=true` staat (zet hem in bij de allereerste deploy en haal hem
+daarna weg). Via de `UsersSeeder` worden dan de standaardaccounts `admin@admin.com` en
+`testaccount01@example.com` aangemaakt (idempotent `updateOrCreate` — verwijdert nooit bestaande data).
+Wachtwoorden komen uit `SEED_ADMIN_PASSWORD` / `SEED_USER_PASSWORD`.
 
 ### 23.7 Optionele builds
 
