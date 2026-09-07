@@ -34,16 +34,6 @@ class TimeEntryPolicy
 
     public function deleteAny(User $user): bool
     {
-        return true;
-    }
-
-    public function restore(User $user, TimeEntry $timeEntry): bool
-    {
-        return $timeEntry->user_id === $user->id;
-    }
-
-    public function forceDelete(User $user, TimeEntry $timeEntry): bool
-    {
-        return $timeEntry->user_id === $user->id;
+        return false;
     }
 }

@@ -26,7 +26,7 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->id('admin')
+            ->id('dashboard')
             ->path('dashboard')
             ->login()
             ->defaultThemeMode(ThemeMode::Dark)

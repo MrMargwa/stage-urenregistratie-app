@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Models\TimeEntry;
 use App\Helpers\DurationHelper;
+use App\Models\TimeEntry;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -17,6 +17,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 
 class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 {
@@ -28,7 +29,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
 
     public ?string $weekStart = null;
 
-    private ?\Illuminate\Support\Collection $cachedWeekEntries = null;
+    private ?Collection $cachedWeekEntries = null;
 
     public function mount(): void
     {
@@ -50,7 +51,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                 ->weight('bold'),
             Text::make($this->weekSummary)
                 ->color('gray'),
-            Text::make('Totaal deze week: ' . $this->totalHours)
+            Text::make('Totaal deze week: '.$this->totalHours)
                 ->weight('bold')
                 ->color('primary'),
             EmbeddedTable::make(),
@@ -91,9 +92,9 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->action('nextWeek'),
             ]),
             Action::make('createTimeEntry')
-                    ->label('+ Tijdregistratie')
-                    ->url(fn (): string => route('filament.admin.resources.time-entries.create'))
-                    ->color('primary'),
+                ->label('+ Tijdregistratie')
+                ->url(fn (): string => route('filament.dashboard.resources.time-entries.create'))
+                ->color('primary'),
         ])->alignment(Alignment::Between);
     }
 
@@ -117,20 +118,20 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->time('H:i'),
                 TextColumn::make('break_minutes')
                     ->label('Pauze')
-                    ->formatStateUsing(fn (int $state): string => $state . ' min'),
+                    ->formatStateUsing(fn (int $state): string => $state.' min'),
                 TextColumn::make('description')
                     ->label('Omschrijving'),
-                TextColumn::make('duration')
+                TextColumn::make('duration_minutes')
                     ->label('Duur')
                     ->formatStateUsing(fn (int $state): string => DurationHelper::formatMinutes($state))
                     ->weight('bold'),
             ])
             ->defaultSort('date', 'asc')
-            ->paginated([10, 25, 50])
+            ->paginated(false)
             ->searchable(false);
     }
 
-    private function getWeekEntries(): \Illuminate\Support\Collection
+    private function getWeekEntries(): Collection
     {
         if ($this->cachedWeekEntries !== null) {
             return $this->cachedWeekEntries;
@@ -158,7 +159,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
         $days = [];
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dayEntries = $entries->filter(fn (TimeEntry $e) => $e->date->isSameDay($date));
-            $totalMinutes = (int) $dayEntries->sum('duration');
+            $totalMinutes = (int) $dayEntries->sum('duration_minutes');
 
             $days[] = [
                 'date' => $date->copy(),
@@ -187,7 +188,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
         $start = Carbon::parse($this->weekStart);
         $end = $start->copy()->endOfWeek();
 
-        return $start->format('d M') . ' – ' . $end->format('d M Y') . '  (week ' . $start->isoWeek() . ')';
+        return $start->format('d M').' – '.$end->format('d M Y').'  (week '.$start->isoWeek().')';
     }
 
     public function previousWeek(): void

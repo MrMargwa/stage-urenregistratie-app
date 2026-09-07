@@ -28,6 +28,7 @@ class TimeEntry extends Model
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
         'break_minutes' => 'integer',
+        'duration_minutes' => 'integer',
     ];
 
     public function user(): BelongsTo
@@ -37,15 +38,26 @@ class TimeEntry extends Model
 
     protected function duration(): Attribute
     {
-        return Attribute::get(function () {
-            $minutes = (int) round($this->start_time->diffInMinutes($this->end_time));
+        return Attribute::get(fn (): int => $this->computeDuration());
+    }
 
-            if ($minutes < 0) {
-                $minutes += 1440;
-            }
+    /**
+     * Berekent de netto duur (eindtijd − begintijd − pauze) in minuten.
+     * Dezelfde formule wordt gebruikt voor de opgeslagen duration_minutes.
+     */
+    private function computeDuration(): int
+    {
+        if (! $this->start_time || ! $this->end_time) {
+            return 0;
+        }
 
-            return max(0, $minutes - $this->break_minutes);
-        });
+        $minutes = (int) round($this->start_time->diffInMinutes($this->end_time));
+
+        if ($minutes < 0) {
+            $minutes += 1440;
+        }
+
+        return max(0, $minutes - (int) $this->break_minutes);
     }
 
     public static function boot(): void
@@ -63,6 +75,7 @@ class TimeEntry extends Model
                     ]);
                 }
 
+                $entry->duration_minutes = $entry->computeDuration();
                 $entry->assertNoOverlap();
             }
         });
@@ -71,6 +84,9 @@ class TimeEntry extends Model
     /**
      * Controleert of deze entry overlapt met een andere entry van dezelfde
      * gebruiker op dezelfde dag (exclusief de huidige rij bij een update).
+     *
+     * Aaneengesloten registraties (de ene eindigt waar de andere begint)
+     * worden NIET als overlap beschouwd.
      *
      * @throws ValidationException
      */
@@ -88,12 +104,8 @@ class TimeEntry extends Model
             ->whereDate('date', $this->date->toDateString())
             ->where('id', '!=', $this->id)
             ->where(function ($q) use ($start, $end): void {
-                $q->whereBetween('start_time', [$start, $end])
-                    ->orWhereBetween('end_time', [$start, $end])
-                    ->orWhere(function ($q) use ($start, $end): void {
-                        $q->where('start_time', '<=', $start)
-                            ->where('end_time', '>=', $end);
-                    });
+                $q->where('start_time', '<', $end)
+                    ->where('end_time', '>', $start);
             })
             ->exists();
 

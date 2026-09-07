@@ -3,8 +3,10 @@
 namespace App\Filament\Admin\Resources\Users\Schemas;
 
 use App\Enums\Role;
+use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
 
 class UserForm
@@ -29,7 +31,9 @@ class UserForm
                     ->label('Rol')
                     ->options(Role::options())
                     ->required()
-                    ->default(Role::User),
+                    ->default(Role::User)
+                    ->disabled(fn (Component $component): bool => $component->getRecord() instanceof User
+                        && $component->getRecord()->isLastAdmin()),
 
                 TextInput::make('password')
                     ->label('Wachtwoord')

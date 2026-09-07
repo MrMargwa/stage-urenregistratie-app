@@ -10,7 +10,6 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Hash;
 
 class Settings extends Page
 {
@@ -113,7 +112,7 @@ class Settings extends Page
         ];
 
         if (filled($data['password'] ?? null)) {
-            $clean['password'] = Hash::make($data['password']);
+            $clean['password'] = $data['password'];
         }
 
         $user->update($clean);

@@ -53,9 +53,7 @@ class TimeEntryExporter extends Exporter
      */
     protected function getUiColor(): string
     {
-        return $this->export->user
-            ->ui_preferences['ui.color']
-            ?? '#6366f1';
+        return data_get($this->export->user, 'ui_preferences.ui.color', '#6366f1');
     }
 
     /**

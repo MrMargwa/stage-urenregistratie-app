@@ -8,6 +8,6 @@ class HomeController extends Controller
 {
     public function __invoke(): RedirectResponse
     {
-        return redirect()->route('filament.admin.pages.dashboard');
+        return redirect()->route('filament.dashboard.pages.dashboard');
     }
 }

@@ -2,12 +2,9 @@
 
 namespace App\Filament\Admin\Resources\TimeEntries\Tables;
 
-use App\Filament\Admin\Resources\TimeEntries\TimeEntryResource;
 use App\Helpers\DurationHelper;
 use App\Models\TimeEntry;
 use Carbon\Carbon;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -20,11 +17,6 @@ class TimeEntriesTable
     {
         return $table
             ->columns([
-                TextColumn::make('user.name')
-                    ->label('Gebruiker')
-                    ->sortable()
-                    ->hidden(),
-
                 TextColumn::make('date')
                     ->label('Datum')
                     ->date('d-m-Y')
@@ -44,9 +36,9 @@ class TimeEntriesTable
                 TextColumn::make('description')
                     ->label('Beschrijving'),
 
-                TextColumn::make('duration')
+                TextColumn::make('duration_minutes')
                     ->label('Duur')
-                    ->formatStateUsing(fn ($state) => DurationHelper::formatMinutes($state)),
+                    ->formatStateUsing(fn (?int $state) => DurationHelper::formatMinutes($state ?? 0)),
             ])
             ->filters([
                 SelectFilter::make('week')
@@ -67,11 +59,6 @@ class TimeEntriesTable
             ])
             ->recordActions([
                 EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

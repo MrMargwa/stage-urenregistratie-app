@@ -35,6 +35,14 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === Role::Admin;
     }
 
+    public function isLastAdmin(): bool
+    {
+        return $this->isAdmin()
+            && self::where('role', Role::Admin)
+                ->where('id', '!=', $this->id)
+                ->doesntExist();
+    }
+
     public function timeEntries(): HasMany
     {
         return $this->hasMany(TimeEntry::class);
@@ -42,9 +50,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function totalLoggedMinutes(): int
     {
-        return (int) $this->timeEntries()
-            ->get()
-            ->sum(fn (TimeEntry $entry): int => $entry->duration);
+        return (int) $this->timeEntries()->sum('duration_minutes');
     }
 
     public function totalLoggedHoursFormatted(): string

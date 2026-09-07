@@ -11,18 +11,20 @@ class UsersSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminPassword = env('SEED_ADMIN_PASSWORD', 'Welkom1!23');
-        $userPassword = env('SEED_USER_PASSWORD', 'Welkom1!23');
+        $adminEmail = env('SEED_ADMIN_EMAIL', 'admin@example.com');
+        $userEmail = env('SEED_ADMIN_EMAIL', 'admin@example.com');
+        $adminPassword = env('SEED_ADMIN_PASSWORD', 'Password1!23');
+        $userPassword = env('SEED_USER_PASSWORD', 'Password1!23');
 
         $this->upsertUser([
-            'email' => 'admin@admin.com',
+            'email' => $adminEmail,
             'name' => 'Admin',
             'password' => Hash::make($adminPassword),
             'role' => Role::Admin,
         ]);
 
         $this->upsertUser([
-            'email' => 'testaccount01@example.com',
+            'email' => $userEmail,
             'name' => 'Test Account 01',
             'password' => Hash::make($userPassword),
             'role' => Role::User,

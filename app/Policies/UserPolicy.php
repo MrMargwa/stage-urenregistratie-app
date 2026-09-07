@@ -33,7 +33,7 @@ class UserPolicy
             return false;
         }
 
-        return ! $this->isLastAdmin($model);
+        return ! $model->isLastAdmin();
     }
 
     public function deleteAny(User $user): bool
@@ -50,11 +50,5 @@ class UserPolicy
     public function forceDelete(User $user, User $model): bool
     {
         return $this->delete($user, $model);
-    }
-
-    private function isLastAdmin(User $model): bool
-    {
-        return $model->isAdmin()
-            && User::where('role', Role::Admin)->where('id', '!=', $model->id)->doesntExist();
     }
 }
