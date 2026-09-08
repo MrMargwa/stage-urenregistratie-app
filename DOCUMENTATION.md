@@ -19,7 +19,7 @@ Het bestaat uit:
 - Eloquent ORM voor database-interactie
 - Blade + Livewire voor UI-rendering
 - Tailwind CSS voor styling
-- Excel-export en synchronisatiefunctionaliteit
+- Excel-export (TimeEntryExporter)
 
 De app laat een gebruiker toe om:
 
@@ -45,7 +45,7 @@ Het doel is om het proces van urenregistratie te vereenvoudigen en te standaardi
 - een omschrijving toevoegt
 - de werkduur automatisch laat berekenen
 - per week kan zien hoeveel uren zijn gedaan
-- de data kan exporteren of synchroniseren met een werkblad
+- de data kan exporteren naar Excel
 
 Het probleem dat deze app oplost is: gebrek aan controle, overzicht en consistentie bij het bijhouden van stage-uren.
 
@@ -84,7 +84,7 @@ Een gebruiker kan een tijdregistratie aanmaken met:
 - pauze in minuten
 - beschrijving
 
-De duur wordt niet apart opgeslagen, maar berekend op basis van begin/eind-tijd minus pauze.
+De netto duur wordt bij het opslaan berekend op basis van begin/eind-tijd minus pauze en opgeslagen in de `duration_minutes`-kolom. De `duration`-accessor levert dezelfde waarde via `DurationHelper`.
 
 ### 5.2 Overlap-controle
 
@@ -98,13 +98,13 @@ Het dashboard toont de gekozen week, per dag de registraties en een totaal aanta
 
 Een gebruiker kan zijn data exporteren naar een .xlsx-bestand. De export is afgestemd op de app-ervaring en gebruikt Filament export features.
 
-### 5.5 Excel synchronisatie
+### 5.5 Excel import — niet beschikbaar
 
-De app bevat functionaliteit om Excel- of CSV-bestanden te importeren en de data te synchroniseren met de database. Dit is relevant voor gebruikers die al een werkblad hebben.
+Deze functionaliteit bestaat niet in de huidige versie van de app. Er is geen Excel-import of CSV-import.
 
-### 5.6 Persoonlijk Excel-werkblad
+### 5.6 Excel werkblad koppeling — niet beschikbaar
 
-De app kan een eigen werkblad koppelen dat automatisch wordt bijgewerkt wanneer er wijzigingen plaatsvinden.
+Deze functionaliteit (werkblad koppelen) bestaat niet in de huidige versie van de app.
 
 ### 5.7 Instellingen
 
@@ -114,7 +114,6 @@ Gebruikers kunnen:
 - e-mailadres aanpassen
 - wachtwoord wijzigen
 - thema kiezen
-- accentkleur kiezen
 - totaal te lopen stage-uren instellen
 
 ### 5.8 Gebruikersbeheer
@@ -329,16 +328,16 @@ De werkelijke routes zijn via `php artisan route:list` geverifieerd. De belangri
 
 ```text
 GET  /                                HomeController
-GET  /dashboard                       filament.admin.pages.dashboard
-GET  /dashboard/login                 filament.admin.auth.login
-POST /dashboard/logout                filament.admin.auth.logout
-GET  /dashboard/settings              filament.admin.pages.settings
-GET  /dashboard/time-entries          filament.admin.resources.time-entries.index
-GET  /dashboard/time-entries/create   filament.admin.resources.time-entries.create
+GET  /dashboard                       filament.dashboard.pages.dashboard
+GET  /dashboard/login                 filament.dashboard.auth.login
+POST /dashboard/logout                filament.dashboard.auth.logout
+GET  /dashboard/settings              filament.dashboard.pages.settings
+GET  /dashboard/time-entries          filament.dashboard.resources.time-entries.index
+GET  /dashboard/time-entries/create   filament.dashboard.resources.time-entries.create
 GET  /dashboard/time-entries/{record}/edit
-GET  /dashboard/users                 filament.admin.resources.users.index
-GET  /dashboard/users/create          filament.admin.resources.users.create
-GET  /dashboard/users/{record}/edit   filament.admin.resources.users.edit
+GET  /dashboard/users                 filament.dashboard.resources.users.index
+GET  /dashboard/users/create          filament.dashboard.resources.users.create
+GET  /dashboard/users/{record}/edit   filament.dashboard.resources.users.edit
 POST /theme                           ThemeController
 ```
 
@@ -391,7 +390,7 @@ class HomeController extends Controller
 {
     public function __invoke(): RedirectResponse
     {
-        return redirect()->route('filament.admin.pages.dashboard');
+        return redirect()->route('filament.dashboard.pages.dashboard');
     }
 }
 ```
@@ -449,6 +448,7 @@ Velden:
 - `start_time`
 - `end_time`
 - `break_minutes`
+- `duration_minutes`
 - `description`
 - timestamps
 
@@ -457,23 +457,30 @@ Velden:
 ```php
 protected function duration(): Attribute
 {
-    return Attribute::get(function () {
-        $minutes = (int) round($this->start_time->diffInMinutes($this->end_time));
+    return Attribute::get(fn (): int => $this->computeDuration());
+}
 
-        if ($minutes < 0) {
-            $minutes += 1440;
-        }
+private function computeDuration(): int
+{
+    if (! $this->start_time || ! $this->end_time) {
+        return 0;
+    }
 
-        return max(0, $minutes - $this->break_minutes);
-    });
+    return DurationHelper::toMinutes(
+        $this->start_time->format('H:i'),
+        $this->end_time->format('H:i'),
+        (int) $this->break_minutes,
+    );
 }
 ```
 
-Dus:
+De duur wordt berekend via `App\Helpers\DurationHelper::toMinutes()`:
 
 ```text
 duur = eindtijd - begintijd - pauze
 ```
+
+Hierbij wordt ook een blok dat de middernacht overschrijdt (eindtijd vóór begintijd) correct behandeld: er wordt +24 uur opgeteld.
 
 #### Overlap validatie
 
@@ -485,7 +492,7 @@ In het boot-event van `TimeEntry` wordt gecontroleerd of een nieuwe registratie 
 
 ### `users`
 
-Uit `database/migrations/0001_01_01_000000_create_users_table.php`:
+Uit `database/migrations/0001_01_01_000000_create_users_table.php` (met uitbreidingen):
 
 - `id`
 - `name`
@@ -493,14 +500,15 @@ Uit `database/migrations/0001_01_01_000000_create_users_table.php`:
 - `password`
 - `role`
 - `theme_mode`
-- `accent_color`
+- `accent_color` — historische kolom die in de huidige app niet wordt gebruikt
 - `target_hours`
+- `ui_preferences` (JSON, toegevoegd in `2026_08_27_084158_add_ui_preferences_to_users_table.php`)
 - `remember_token`
 - timestamps
 
 ### `time_entries`
 
-Uit `database/migrations/2026_08_21_085424_create_time_entries_table.php`:
+Uit `database/migrations/2026_08_21_085424_create_time_entries_table.php` (met uitbreidingen):
 
 - `id`
 - `user_id`
@@ -508,8 +516,15 @@ Uit `database/migrations/2026_08_21_085424_create_time_entries_table.php`:
 - `start_time`
 - `end_time`
 - `break_minutes`
+- `duration_minutes` (toegevoegd in `2026_09_07_000001_add_duration_minutes_to_time_entries_table.php`)
 - `description`
 - timestamps
+
+Opmerking: `time_entries.user_id` gebruikt `nullOnDelete` op DB-niveau. Het feitelijk verwijderen
+van de stage-uren bij een verwijderde gebruiker gebeurt op **applicatieniveau**: het `User::deleting`
+event verwijdert alle bijbehorende `time_entries`. Zo werkt de cascade consistent op SQLite (tests)
+én PostgreSQL/MySQL (productie). Er is geen `workbook_linked_at`-kolom (of andere
+werkblad-koppelingskolom) in de schema's.
 
 ### Relatie
 
@@ -616,7 +631,7 @@ De pagina toont:
 De query is een echte Eloquent query:
 
 ```php
-TimeEntry::where('user_id', auth()->id())
+TimeEntry::ownedBy(auth()->user())
     ->whereBetween('date', [$start, $end])
     ->orderBy('date')
     ->orderBy('start_time')
@@ -671,18 +686,9 @@ Het gebruikt OpenSpout en stijl de header/cellen op basis van UI-preferences van
 
 ---
 
-## 23. Excel synchronisatie en werkblad
+## 23. Excel import en werkblad-koppeling — niet beschikbaar
 
-De app bevat ook functionaliteit voor Excel-synchronisatie en een persoonlijk werkblad. De kernidee is:
-
-- een Excel- of CSV-bestand uploaden
-- bestaande records herkennen
-- nieuwe records aanmaken
-- bestaande records bijwerken
-- in sommige gevallen data verwijderen
-- de koppeling houden met een persoonlijk werkblad
-
-De exacte implementation is verspreid over Filament-flows en app-logic, maar het doel is duidelijk: tijdregistraties kunnen automatisch worden gevoed en onderhouden vanuit een bestand.
+Deze functionaliteit bestaat niet in de huidige versie van de app. Er is geen Excel- of CSV-import, geen synchronisatie met een bestand, en geen koppeling van een persoonlijk werkblad. De app biedt alleen Excel **export** via `TimeEntryExporter` (zie sectie 22).
 
 ---
 
@@ -919,7 +925,6 @@ Er is geen ingewikkelde service-mesh of microservice-architectuur. De app is een
 ### Zwakke punten
 
 - veel business logic zit in Filament pages in plaats van aparte service classes
-- Excel-import en workbook-logic zijn verspreid
 - app is sterk afhankelijk van Filament conventions
 
 ### Risicovolle onderdelen
@@ -927,7 +932,7 @@ Er is geen ingewikkelde service-mesh of microservice-architectuur. De app is een
 - overlap-validatie in model boot hooks
 - admin delete logic
 - user-specific queries
-- Excel parsing en sync
+- Excel export styling
 
 ---
 

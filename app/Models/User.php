@@ -48,6 +48,19 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(TimeEntry::class);
     }
 
+    /**
+     * Verwijdert de stage-uren van een gebruiker zodra die gebruiker wordt
+     * verwijderd. Dit is de 'cascade delete' op applicatieniveau: het werkt op
+     * alle ondersteunde databases (SQLite in tests, PostgreSQL in productie)
+     * zonder dat de FK-constraint van time_entries hoeft te worden aangepast.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user): void {
+            $user->timeEntries()->delete();
+        });
+    }
+
     public function totalLoggedMinutes(): int
     {
         return (int) $this->timeEntries()->sum('duration_minutes');

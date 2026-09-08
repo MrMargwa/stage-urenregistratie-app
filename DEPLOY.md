@@ -36,8 +36,8 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
 | `QUEUE_CONNECTION` | `sync` (of `redis` voor async exports) |
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
-| `SEED_ADMIN_PASSWORD` | sterk wachtwoord voor `admin@admin.com` (geen standaard in productie gebruiken!) |
-| `SEED_USER_PASSWORD` | (optioneel) wachtwoord voor de testaccount, standaard `Welkom1!23` |
+| `SEED_ADMIN_PASSWORD` | sterk wachtwoord voor de admin-account (geen standaard in productie gebruiken!) |
+| `SEED_USER_PASSWORD` | (optioneel, dev only) wachtwoord voor het testaccount; in productie wordt geen testaccount aangemaakt |
 | `RUN_SEED` | **alleen de eerste keer** `true` zetten (zie Stap 6). Daarna weglaten. |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` — **alleen** als je een Redis-service toevoegt |
 
@@ -107,26 +107,30 @@ Bouwt het mis? Tab **Deployments** → klik op de build → logs lezen.
 
 De pre-deploy-stap draait **altijd** `php artisan migrate --force`. Daarnaast draait de seeder
 **alleen** als de variable `RUN_SEED=true` staat. Zet die variable dus bij de allereerste deploy
-(zodat de admin- en testaccounts worden aangemaakt), en **haal hem daarna weg**.
+(zodat de admin-account wordt aangemaakt), en **haal hem daarna weg**.
 
 Waarom? Zo seed je precies één keer. Migraties draaien bij elke deploy, maar er wordt nooit meer
 geseed zodra de site live is. Je ingevulde stage-uren en accounts blijven dus intact.
 
-- `admin@admin.com` (rol `admin`)
-- `testaccount01@example.com` (rol `user`)
+De seeder maakt aan:
+- De **admin**-account (`SEED_ADMIN_EMAIL`, default `admin@example.com`, rol `admin`) — altijd.
+- Een **testaccount** (`SEED_USER_EMAIL`, default `testaccount01@example.com`, rol `user`) —
+  **alleen in de lokale (dev) omgeving**, niet in productie.
 
-Wachtwoorden komen uit omgevingsvariabelen, met een dev-standaard als fallback:
+Wachtwoorden komen uit omgevingsvariabelen:
 
-| Variable | Gebruiker | Standaard (lokaal) |
+| Variable | Gebruiker | Productie |
 |---|---|---|
-| `SEED_ADMIN_PASSWORD` | `admin@admin.com` | `Welkom1!23` |
-| `SEED_USER_PASSWORD` | `testaccount01@example.com` | `Welkom1!23` |
+| `SEED_ADMIN_EMAIL` | admin-account e-mail | default `admin@example.com` |
+| `SEED_ADMIN_PASSWORD` | admin-account wachtwoord | **verplicht** — geef hier altijd een sterk wachtwoord mee |
+| `SEED_USER_EMAIL` | testaccount e-mail (dev only) | default `testaccount01@example.com` |
+| `SEED_USER_PASSWORD` | testaccount wachtwoord (dev only) | optioneel |
 
-> ⚠️ Omdat de fallback-wachtwoorden in de repo staan, zet je in Railway (productie) altijd
-> `SEED_ADMIN_PASSWORD` op een sterk wachtwoord. Op die manier is je admin-account niet met een
-> publiek bekend wachtwoord beveiligd. deze wachtwoord geldt op het moment van seeden (de eerste keer).
-> Wil je later het admin-wachtwoord wijzigen, doe dat dan gewoon via de instellingenpagina in de app
-> (niet via de seeder).
+> ⚠️ In productie MOET `SEED_ADMIN_PASSWORD` worden gezet. Er wordt **nooit** een
+> standaardwachtwoord gebruikt voor productie-accounts: zonder die variabele stopt de seeder met
+> een duidelijke foutmelding. In de lokale omgeving zonder wachtwoordvariabele wordt een veilig
+> willekeurig wachtwoord gegenereerd en in de console getoond. Wil je later het admin-wachtwoord
+> wijzigen, doe dat dan via de instellingenpagina in de app (niet via de seeder).
 
 Log daarna in op `<jouw-domein>/dashboard`.
 
@@ -144,16 +148,14 @@ De app is multi-user geworden. Wat er bij het deployen van deze versie met je be
 
 | Wijziging | Effect op bestaande data |
 |---|---|
-| Kolom `role` op `users` | Bestaande accounts krijgen default `user`. De `UsersSeeder` zorgt dat `admin@admin.com` de rol `admin` houdt. |
+| Kolom `role` op `users` | Bestaande accounts krijgen default `user`. De `UsersSeeder` zorgt dat de admin-account de rol `admin` houdt. |
 | Kolom `user_id` op `time_entries` | Bestaande uren worden tijdens de migratie automatisch gekoppeld aan jouw admin-account, zodat niets zoekraakt of "eigenaarloos" wordt. |
-| Kolommen `theme_mode` + `accent_color` op `users` | Krijgen defaults (`dark` / `cyan`); gedrag verandert niet. |
-| Kolom `workbook_linked_at` op `users` | Nullable, geen effect op bestaande data. Gebruikers koppelen zelf hun Excel-werkblad. |
+| Kolommen `theme_mode` op `users` | Krijgt default (`dark`); gedrag verandert niet. |
 
-**Let op:** het persoonlijke Excel-werkblad staat in de container-opslag (`storage/app/private`),
-die op Railway vluchtig is. Dat is bewust geen probleem: het werkblad wordt bij elke mutatie én
-bij het downloaden opnieuw uit de database gegenereerd, dus het is altijd actueel.
+> ℹ️ De kolom `accent_color` op `users` is historisch (niet actief gebruikt in de app) en blijft
+> staan; er is geen destructieve migratie voor nodig.
 
-**Regel voor toekomstige migraties:** altijd additief (nieuwe kolommen met `default()` of nullable,
+**Rule voor toekomstige migraties:** altijd additief (nieuwe kolommen met `default()` of nullable,
 nieuwe tabellen). Nooit kolommen droppen of data herschrijven in een migratie — dan blijft
 deployen zonder dataverlies gegarandeerd.
 
@@ -164,18 +166,19 @@ deployen zonder dataverlies gegarandeerd.
 
 Nieuw sinds deze versie:
 
-- Gebruikersbeheer door admins (accounts aanmaken/bewerken; geen self-registration)
-- Iedereen ziet alleen eigen uren; admins zien alles
-- Instellingenpagina: account beheren + thema (donker/licht/systeem) en accentkleur
-- Excel-export (.xlsx) en **Excel-synchronisatie**: upload een bestand en de app werkt je uren bij,
-  maakt nieuwe aan en kan (optioneel) overtollige regels verwijderen
+- Gebruikersbeheer door admins (accounts aanmaken/bewerken/verwijderen; geen self-registration).
+  Bij het verwijderen van een gebruiker worden diens stage-uren ook verwijderd
+  (User::deleting event, applicatieniveau — geen DB-migratie nodig).
+- Iedereen — óók de admin — ziet alleen eigen uren.
+- Instellingenpagina: account beheren + thema (donker/licht/systeem) + stage-uren doel.
+- Excel-export (.xlsx).
 
 ## Troubleshooting
 
 | Probleem | Oplossing |
 |---|---|
-| Inloggen lukt, maar daarna `403 Forbidden` op `/admin` | Het `User`-model implementeert het `FilamentUser`-contract niet — Filament weigert dan élke user in productie (lokaal met `APP_ENV=local` lijkt het te werken). Fix: `User extends Authenticatable implements FilamentUser` mét `canAccessPanel(): bool` (staat in de repo). |
-| `500 Internal Server Error` op `/admin/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
+| Inloggen lukt, maar daarna `403 Forbidden` op `/dashboard` | Het `User`-model implementeert het `FilamentUser`-contract niet — Filament weigert dan élke user in productie (lokaal met `APP_ENV=local` lijkt het te werken). Fix: `User extends Authenticatable implements FilamentUser` mét `canAccessPanel(): bool` (staat in de repo). |
+| `500 Internal Server Error` op `/dashboard/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
 | `Application failed to respond` op het domein | **Meestal een port-mismatch.** De app (nginx) luistert op **8000** (= domein **target port**). Heeft Railway een handmatige `PORT`-variabele (bv. `8080`) die afwijkt, dan klopt de luisterpoort nooit. Oplossing: verwijder de handmatige `PORT`-variabele en check dat domein → **target port** = `8000`. Deploy-logs moeten `[start] nginx will listen on 0.0.0.0:8000` tonen. Zie je een crash-loop, check dan de wachtlus-fix hieronder. |
 | Build-log noemt `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert Nixpacks. Staat die er niet in? Zet hem dan handmatig: app-service → **Settings** → **Build** → Builder → **Nixpacks**, en redeploy. |
 | `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Nixpacks koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste (lockfile heeft ≥8.4.1 nodig). Opgelost door `"php": "^8.4"` + install-fase met `--no-dev`. |

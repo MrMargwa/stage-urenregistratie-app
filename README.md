@@ -6,28 +6,24 @@ pauze en beschrijving per registratie; duur wordt automatisch berekend.
 ## Functionaliteit
 
 ### Urenregistratie
-- Registraties aanmaken, bewerken en verwijderen (`/admin/time-entries`)
+- Registraties aanmaken, bewerken en verwijderen (`/dashboard/time-entries`)
 - Automatische duurberekening (werkt ook over middernacht heen)
 - Overlap-validatie: overlappende registraties op dezelfde dag worden geweigerd
 - **Weekstaat-filter**: selecteer een week in de lijst om alleen die week te bekijken
-- **Exporteer naar `.xlsx`** (knop "Exporteren (.xlsx)"): exporteert de uren zoals je ze ziet —
+- **Exporteer naar `.xlsx`** (knop "Exporteren (.xlsx)"): exporteert je uren zoals je ze ziet —
   selecteer eerst een weekstaat in de filter voor een weekexport, of laat de filter leeg voor alle uren.
   Kolommen: Week, Datum, Begintijd, Eindtijd, Pauze, Beschrijving, Duur.
-- **Excel synchroniseren** (knop "Excel synchroniseren"): upload een `.xlsx`/`.csv`-bestand en de app
-  synchroniseert je registraties ermee. Herkende kopregels (NL én EN): datum/date, begintijd/start,
-  eindtijd/end/einde, pauze/break en beschrijving/omschrijving/description.
-  - Bestaande regels worden herkend op **datum + begintijd** en bijgewerkt
-  - Nieuwe regels worden aangemaakt
-  - Optioneel: regels die niet in het bestand staan worden verwijderd
-  - Na afloop krijg je een rapport met aangemaakt/bijgewerkt/verwijderd/overgeslagen + eventuele fouten per rij
-- **Persoonlijk Excel-werkblad** (knop "Excel koppelen"): koppel één keer je eigen stage-urenwerkblad.
-  Daarna wordt het bestand **automatisch bijgewerkt** zodra je een uur toevoegt, aanpast of verwijdert
-  (ook na een Excel-sync). Download het actuele werkblad op elk moment via "Mijn Excel-werkblad".
+
+### Dashboard
+- Overzicht van de huidige (of gekozen) week met per dag de registraties
+- Weeknavigatie (vorige / huidige / volgende week)
+- Totaal aantal uren + stage-voortgangsbalk op basis van je doel (instelbaar in Instellingen)
 
 ### Rollen & beveiliging
-- Rol `admin`, `user` of `student` op elk account (alleen admins kunnen rollen toewijzen)
-- **Gebruikersbeheer** (`Beheer → Gebruikers`) is alleen zichtbaar én toegankelijk voor admins;
-  registratie is bewust niet mogelijk — accounts worden door een admin aangemaakt
+- Rollen `admin`, `user` of `student` op elk account (alleen admins kunnen rollen toewijzen)
+- **Gebruikersbeheer** (`Beheer → Gebruikers`) is alleen zichtbaar én toegankelijk voor admins.
+  Een admin kan gebruikers aanmaken/bewerken/verwijderen; bij het verwijderen van een gebruiker
+  worden diens stage-uren ook verwijderd.
 - **Privacy:** elke gebruiker — óók de admin — ziet alleen zijn eigen uren. Niemand kan andermans
   registraties bekijken of bewerken.
 - Niet-ingelogd? Dan kom je altijd op de login terecht (ook bij onbekende URL's / 404's);
@@ -36,8 +32,8 @@ pauze en beschrijving per registratie; duur wordt automatisch berekend.
 ### Instellingen
 Via `Instellingen` in de navigatie kan elke gebruiker:
 - Naam, e-mailadres en wachtwoord aanpassen
-- Thema kiezen: donker (standaard), licht of systeem
-- Accentkleur kiezen (rood, geel, groen, paars, blauw, roze, …) — direct toegepast op de hele app
+- Thema kiezen: donker, licht of systeem
+- Totaal te lopen stage-uren instellen (voor de voortgangsbalk)
 
 ## Lokaal ontwikkelen
 
@@ -59,10 +55,11 @@ php artisan test        # Pest, draait op sqlite :memory: (instellingen in phpun
 vendor/bin/pint         # code style
 ```
 
-## Online zetten (Railway)
+## Productie
 
-Zie [DEPLOY.md](DEPLOY.md). Push naar `main` = automatische deploy.
+Zie [DEPLOY.md](DEPLOY.md) voor het live zetten.
 
 > **Belangrijk:** alle migraties zijn **additief** (nieuwe kolommen met default/nullable, nooit
-> drop of destructive change). Daardoor kan er veilig gedeployd worden zonder de productiedata
-> te verliezen.
+> drop of destructieve wijziging). Daardoor kan er veilig gedeployed worden zonder de
+> productiedata te verliezen. Het verwijderen van de stage-uren bij een verwijderde gebruiker
+> gebeurt op applicatieniveau (User::deleting event) en vereist geen DB-migratie.

@@ -39,11 +39,7 @@ class TimeEntryResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
-
-        $query->where('user_id', auth()->id());
-
-        return $query;
+        return parent::getEloquentQuery()->ownedBy(auth()->user());
     }
 
     public static function getRelations(): array

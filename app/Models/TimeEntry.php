@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Helpers\DurationHelper;
 use Database\Factories\TimeEntryFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -36,14 +38,26 @@ class TimeEntry extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Beperkt de query tot tijdregistraties van de opgegeven gebruiker.
+     *
+     * Dit is de enige plek waar ownership-scoping wordt gedefinieerd, zodat
+     * elke plek die eigen uren toont (resource, dashboard, filters) dezelfde,
+     * consistente scope gebruikt.
+     */
+    public function scopeOwnedBy(Builder $query, User $user): Builder
+    {
+        return $query->where('user_id', $user->id);
+    }
+
     protected function duration(): Attribute
     {
         return Attribute::get(fn (): int => $this->computeDuration());
     }
 
     /**
-     * Berekent de netto duur (eindtijd − begintijd − pauze) in minuten.
-     * Dezelfde formule wordt gebruikt voor de opgeslagen duration_minutes.
+     * Berekent de netto duur (eindtijd − begintijd − pauze) in minuten met
+     * dezelfde formule die ook in migraties / DurationHelper wordt gebruikt.
      */
     private function computeDuration(): int
     {
@@ -51,13 +65,11 @@ class TimeEntry extends Model
             return 0;
         }
 
-        $minutes = (int) round($this->start_time->diffInMinutes($this->end_time));
-
-        if ($minutes < 0) {
-            $minutes += 1440;
-        }
-
-        return max(0, $minutes - (int) $this->break_minutes);
+        return DurationHelper::toMinutes(
+            $this->start_time->format('H:i'),
+            $this->end_time->format('H:i'),
+            (int) $this->break_minutes,
+        );
     }
 
     public static function boot(): void

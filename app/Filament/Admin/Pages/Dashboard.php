@@ -140,7 +140,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
         $start = Carbon::parse($this->weekStart);
         $end = $start->copy()->endOfWeek();
 
-        $this->cachedWeekEntries = TimeEntry::where('user_id', auth()->id())
+        $this->cachedWeekEntries = TimeEntry::ownedBy(auth()->user())
             ->whereBetween('date', [$start, $end])
             ->orderBy('date')
             ->orderBy('start_time')

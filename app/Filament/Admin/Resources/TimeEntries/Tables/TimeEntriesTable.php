@@ -72,7 +72,7 @@ class TimeEntriesTable
     private static function weekOptions(): array
     {
         $dates = TimeEntry::query()
-            ->where('user_id', auth()->id())
+            ->ownedBy(auth()->user())
             ->select('date')
             ->distinct()
             ->orderBy('date')
