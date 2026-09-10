@@ -48,6 +48,9 @@ php artisan migrate --seed
 
 Zonder Docker kun je ook gewoon `php artisan serve` gebruiken zolang `DB_*` in `.env` klopt.
 
+De seeder maakt bij een nieuwe database precies één admin-account aan: `admin@admin.com` /
+`Admin1!23` (wijzig het wachtwoord direct na de eerste login via Instellingen).
+
 ### Tests
 
 ```bash

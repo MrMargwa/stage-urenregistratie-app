@@ -17,15 +17,14 @@ php artisan migrate --seed
 php artisan serve                               # daarna: http://localhost:8000
 ```
 
-**Standaard testaccounts** (uit `UsersSeeder`):
+**Standaard admin-account** (uit `UsersSeeder`):
 
 | Rol  | E-mail | Wachtwoord |
 |------|--------|------------|
-| Admin | `admin@admin.com` | `Welkom1!23` |
-| Gebruiker | `testaccount01@example.com` | `Welkom1!23` |
+| Admin | `admin@admin.com` | `Admin1!23` |
 
-> Tip: maak voor de rol-tests zelf ook een account met rol **Student** aan
-> via Beheer → Gebruikers (zie blok 5).
+> Tip: wijzig het admin-wachtwoord na de eerste login (via Instellingen) en maak voor de rol-tests
+> zelf accounts met rol **Gebruiker** en **Student** aan via Beheer → Gebruikers (zie blok 5).
 
 ---
 
@@ -33,7 +32,7 @@ php artisan serve                               # daarna: http://localhost:8000
 
 - [ v ] **1.1** Gast opent `/` → wordt doorgestuurd naar de **loginpagina**
 - [ v ] **1.2** Onbestaande URL (bv. `/xyz`) als gast → ook naar loginpagina
-- [ v ] **1.3** Inloggen met `admin@admin.com` / `Welkom1!23` lukt → dashboard opent
+- [ v ] **1.3** Inloggen met `admin@admin.com` / `Admin1!23` lukt → dashboard opent
 - [ v ] **1.4** Inloggen met fout wachtwoord → foutmelding, geen toegang
 - [ v ] **1.5** Uitloggen (menu rechtsboven → "Afmelden") werkt
 - [ v ] **1.6** Na uitloggen kan je beveiligde pagina's niet meer openen (wordt naar login gestuurd)

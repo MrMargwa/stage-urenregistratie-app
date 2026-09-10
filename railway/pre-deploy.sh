@@ -22,16 +22,11 @@ done
 
 echo "Migrations complete."
 
-# Admin-account alleen aanmaken/bijwerken bij eerste opzet (RUN_SEED=true).
-# Daarna NIET meer seeden — je wilt je bestaande data (uren, accounts) intact houden.
-# De UsersSeeder is idempotent en raakt time_entries niet aan, maar zodra de site
-# live draait is seeden niet meer nodig.
-if [ "${RUN_SEED:-false}" = "true" ]; then
-    echo "RUN_SEED=true gevonden => database seeden (admin + testaccount)..."
-    php artisan db:seed --force --no-interaction
-else
-    echo "RUN_SEED niet op true => geen seeding bij deze deploy (bestaande data blijft intact)."
-fi
+# De seeder is idempotent: hij maakt de admin-account alleen aan als die
+# ontbreekt en wijzigt bestaande gegevens nooit (ook een online gewijzigd
+# wachtwoord blijft gewoon bewaard en wordt niet hersteld).
+echo "Seeding default admin-account (no-op als die al bestaat)..."
+php artisan db:seed --force --no-interaction
 
 echo "Caching config, routes and views..."
 php artisan config:cache

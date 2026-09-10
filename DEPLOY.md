@@ -36,9 +36,6 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
 | `QUEUE_CONNECTION` | `sync` (of `redis` voor async exports) |
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
-| `SEED_ADMIN_PASSWORD` | sterk wachtwoord voor de admin-account (geen standaard in productie gebruiken!) |
-| `SEED_USER_PASSWORD` | (optioneel, dev only) wachtwoord voor het testaccount; in productie wordt geen testaccount aangemaakt |
-| `RUN_SEED` | **alleen de eerste keer** `true` zetten (zie Stap 6). Daarna weglaten. |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` — **alleen** als je een Redis-service toevoegt |
 
 > ⚠️ `${{Postgres.DATABASE_URL}}` verwijst naar de database-service. Heet jouw database-service anders (bijv. `postgres` of `database`), pas dan het eerste deel aan: `${{<servicenaam>.DATABASE_URL}}`.
@@ -103,34 +100,20 @@ De build gebruikt `nixpacks.toml` uit de repo:
 
 Bouwt het mis? Tab **Deployments** → klik op de build → logs lezen.
 
-## Stap 6 — Admin-gebruiker (alleen eerste keer)
+## Stap 6 — Admin-account (wordt automatisch aangemaakt)
 
-De pre-deploy-stap draait **altijd** `php artisan migrate --force`. Daarnaast draait de seeder
-**alleen** als de variable `RUN_SEED=true` staat. Zet die variable dus bij de allereerste deploy
-(zodat de admin-account wordt aangemaakt), en **haal hem daarna weg**.
+In de pre-deploy-stap draait **altijd** `php artisan migrate --force`, gevolgd door
+`php artisan db:seed --force`. De `UsersSeeder` is **idempotent** en doet bij elke deploy één van
+twee dingen:
 
-Waarom? Zo seed je precies één keer. Migraties draaien bij elke deploy, maar er wordt nooit meer
-geseed zodra de site live is. Je ingevulde stage-uren en accounts blijven dus intact.
+- Staat er nog geen admin-account? Dan maakt hij `admin@admin.com` aan (rol `admin`) met het
+  **standaard wachtwoord `Admin1!23`**.
+- Bestaat de admin al? Dan laat hij alles met rust — ook een online gewijzigd wachtwoord blijft
+  bewaard en wordt nooit teruggezet.
 
-De seeder maakt aan:
-- De **admin**-account (`SEED_ADMIN_EMAIL`, default `admin@example.com`, rol `admin`) — altijd.
-- Een **testaccount** (`SEED_USER_EMAIL`, default `testaccount01@example.com`, rol `user`) —
-  **alleen in de lokale (dev) omgeving**, niet in productie.
-
-Wachtwoorden komen uit omgevingsvariabelen:
-
-| Variable | Gebruiker | Productie |
-|---|---|---|
-| `SEED_ADMIN_EMAIL` | admin-account e-mail | default `admin@example.com` |
-| `SEED_ADMIN_PASSWORD` | admin-account wachtwoord | **verplicht** — geef hier altijd een sterk wachtwoord mee |
-| `SEED_USER_EMAIL` | testaccount e-mail (dev only) | default `testaccount01@example.com` |
-| `SEED_USER_PASSWORD` | testaccount wachtwoord (dev only) | optioneel |
-
-> ⚠️ In productie MOET `SEED_ADMIN_PASSWORD` worden gezet. Er wordt **nooit** een
-> standaardwachtwoord gebruikt voor productie-accounts: zonder die variabele stopt de seeder met
-> een duidelijke foutmelding. In de lokale omgeving zonder wachtwoordvariabele wordt een veilig
-> willekeurig wachtwoord gegenereerd en in de console getoond. Wil je later het admin-wachtwoord
-> wijzigen, doe dat dan via de instellingenpagina in de app (niet via de seeder).
+> ⚠️ **Wijzig het admin-wachtwoord direct na de eerste login** via Instellingen → Mijn account.
+> Er zijn géén omgevingsvariabelen of `RUN_SEED`-flags meer nodig; de seeder is een no-op zodra de
+> admin bestaat. Daarna voeg je zelf meer gebruikers toe via Beheer → Gebruikers.
 
 Log daarna in op `<jouw-domein>/dashboard`.
 
@@ -138,7 +121,8 @@ Log daarna in op `<jouw-domein>/dashboard`.
 
 - Elke `git push origin main` → Railway bouwt en deployt automatisch.
 - Migraties draaien bij elke deploy in de pre-deploy-stap (met wachtlus tot de database online is).
-- Seeding draait **niet** meer automatisch: alleen als `RUN_SEED=true` staat (eerste opzet).
+- De seeder draait bij elke deploy mee en is een no-op zodra de admin-account bestaat — je data en
+  gewijzigde wachtwoorden blijven intact.
 - Exports werken direct (`QUEUE_CONNECTION=sync`, geen worker nodig).
 - De app wordt geserved door Nginx + PHP-FPM (multi-process) in plaats van de single-threaded `php artisan serve` — dit is de grootste snelheidswinst ten opzichte van voorheen.
 
@@ -160,9 +144,10 @@ nieuwe tabellen). Nooit kolommen droppen of data herschrijven in een migratie �
 deployen zonder dataverlies gegarandeerd.
 
 > ✅ **Je gebruikersdata is veilig bij elke deploy.** De pre-deploy-stap (`railway/pre-deploy.sh`) draait
-> altijd `php artisan migrate --force` (additief, verwijdert nooit data). Seeden gebeurt **alleen** als
-> je `RUN_SEED=true` zet. Er wordt **nooit** `migrate:fresh`, `migrate:refresh` of een reset-seed gedraaid
-> op Railway — zo hou je de ingevulde stage-uren van alle users intact.
+> altijd `php artisan migrate --force` (additief, verwijdert nooit data) en daarna `db:seed` — die seeder
+> is idempotent (maakt alleen de admin aan als die ontbreekt). Er wordt **nooit** `migrate:fresh`,
+> `migrate:refresh` of een reset-seed gedraaid op Railway — zo hou je de ingevulde stage-uren van
+> alle users intact.
 
 Nieuw sinds deze versie:
 
