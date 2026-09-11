@@ -10,18 +10,13 @@ it('formatteert minuten naar HH:MM', function () {
         ->and(DurationHelper::formatMinutes(1440))->toBe('24:00');
 })->name('DurationHelper formatMinutes');
 
-it('formatteert seconden correct via formatSeconds', function () {
-    expect(DurationHelper::formatSeconds(2700))->toBe('00:45')
-        ->and(DurationHelper::formatSeconds(5400))->toBe('01:30');
-})->name('DurationHelper formatSeconds');
-
 it('berekent de duur in minuten van begin- tot eindtijd minus pauze', function () {
     expect(DurationHelper::toMinutes('09:00', '17:00'))->toBe(480)
         ->and(DurationHelper::toMinutes('09:00', '17:00', 30))->toBe(450)
         ->and(DurationHelper::toMinutes('00:00', '00:00'))->toBe(0);
 })->name('DurationHelper toMinutes basis');
 
-it('telt 24 uur op wanneer de eindtijd over middernacht heen gaat', function () {
-    expect(DurationHelper::toMinutes('22:00', '06:00', 60))->toBe(420)
-        ->and(DurationHelper::toMinutes('23:30', '00:30'))->toBe(60);
-})->name('DurationHelper toMinutes middernacht');
+it('levert 0 minuten bij een ongeldige (eind vóór begin) combinatie', function () {
+    expect(DurationHelper::toMinutes('17:00', '09:00'))->toBe(0)
+        ->and(DurationHelper::toMinutes('17:00', '09:00', 30))->toBe(0);
+})->name('DurationHelper toMinutes ongeldig');

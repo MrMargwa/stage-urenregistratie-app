@@ -11,7 +11,8 @@ services:
     volumes:
       # Mount de projectmap (het pad van waaruit docker compose wordt uitgevoerd).
       # Dit werkt op Windows en macOS/Linux zonder hardcoded absolute paden.
-      - .\\wsl.localhost\Ubuntu-26.04\home\justin\projects\stage-urenregistratie-app\docker-local:/var/www:cached
+      # - .\\wsl.localhost\Ubuntu-26.04\home\justin\projects\stage-urenregistratie-app\docker-local:/var/www:cached
+      - C:\Stage Projecten\stage-urenregistratie-app:/var/www:cached
       - laravel_storage:/var/www/storage
       - /var/www/vendor   # container-only vendor, blijft bestaan voor composer
       # Aangepaste PHP-instellingen (was eerder genegeerd; nu actief)

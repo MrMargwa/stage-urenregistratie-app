@@ -24,7 +24,7 @@ php artisan serve                               # daarna: http://localhost:8000
 | Admin | `admin@admin.com` | `Admin1!23` |
 
 > Tip: wijzig het admin-wachtwoord na de eerste login (via Instellingen) en maak voor de rol-tests
-> zelf accounts met rol **Gebruiker** en **Student** aan via Beheer → Gebruikers (zie blok 5).
+> zelf een account met rol **Student** aan via Beheer → Gebruikers (zie blok 5).
 
 ---
 
@@ -37,9 +37,9 @@ php artisan serve                               # daarna: http://localhost:8000
 - [ v ] **1.5** Uitloggen (menu rechtsboven → "Afmelden") werkt
 - [ v ] **1.6** Na uitloggen kan je beveiligde pagina's niet meer openen (wordt naar login gestuurd)
 
-### Rollen (gelijkwaardigheid student & gebruiker)
-- [ ] **1.7** Log in als **Student** én als **Gebruiker** → beide zien exact dezelfde menu-items en rechten (GEEN verschil)
-- [ ] **1.8** **Admin** ziet extra menu-groep **"Beheer → Gebruikers"**; Student/Gebruiker zien die NIET
+### Rollen (student & admin)
+- [ ] **1.7** Log in als **Student** → ziet exact dezelfde menu-items als voorheen (dashboard, registraties, export, instellingen) — **geen** Beheer-groep
+- [ ] **1.8** **Admin** ziet extra menu-groep **"Beheer → Gebruikers"**; Student ziet die NIET
 
 ---
 
@@ -62,7 +62,7 @@ php artisan serve                               # daarna: http://localhost:8000
 - [ ] **3.1** Tijdregistraties → "+ Tijdregistratie" → vul datum, begintijd, eindtijd, pauze, beschrijving
 - [ ] **3.2** Na opslaan verschijnt de registratie in de lijst + dashboard; **Duur is automatisch berekend** (eind - begin - pauze)
 - [ ] **3.3** Pauze groter dan gewerkte tijd → duur wordt `00:00` (niet negatief)
-- [ ] **3.4** Registratie **over middernacht** (bv. 22:00 → 06:00) → duur klopt (8 uur)
+- [ ] **3.4** Registratie met eindtijd **vóór** begintijd (bv. 22:00 → 06:00, "nachtwerk") → **geblokkeerd** met foutmelding; nachtdiensten worden niet ondersteund
 
 ### Validatie
 - [ ] **3.5** **Eindtijd vóór begintijd** → foutmelding "De eindtijd kan niet voor de begintijd liggen", niet opslaan
@@ -102,7 +102,7 @@ php artisan serve                               # daarna: http://localhost:8000
 
 - [ ] **5.1** Als **niet-admin** de URL `/dashboard/users` openen → **Verboden** (403), geen toegang
 - [ ] **5.2** Als **admin**: Beheer → Gebruikers → lijst toont naam, e-mail, rol, aantal urenregistraties, aangemaakt-op
-- [ ] **5.3** **Filter op rol** (Student/Gebruiker/Admin) werkt
+- [ ] **5.3** **Filter op rol** (Student/Admin) werkt
 - [ ] **5.4** **Zoeken** op naam of e-mail werkt
 - [ ] **5.5** **Nieuw account aanmaken**: naam, e-mail, rol, wachtwoord (min. 8 tekens) + bevestiging
 - [ ] **5.6** Gebruiker aanmaken met **dubbele e-mail** → foutmelding

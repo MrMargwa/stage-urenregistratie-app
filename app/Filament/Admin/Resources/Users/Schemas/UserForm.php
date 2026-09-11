@@ -31,7 +31,7 @@ class UserForm
                     ->label('Rol')
                     ->options(Role::options())
                     ->required()
-                    ->default(Role::User)
+                    ->default(Role::Student)
                     ->disabled(fn (Component $component): bool => $component->getRecord() instanceof User
                         && $component->getRecord()->isLastAdmin()),
 

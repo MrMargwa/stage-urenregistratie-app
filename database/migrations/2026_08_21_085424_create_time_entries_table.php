@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('time_entries', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete()->index();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete()->index();
 
             $table->date('date')->index();
 
@@ -23,6 +23,8 @@ return new class extends Migration
             $table->time('end_time');
 
             $table->integer('break_minutes')->default(0);
+
+            $table->unsignedInteger('duration_minutes')->default(0);
 
             $table->text('description')->nullable();
 

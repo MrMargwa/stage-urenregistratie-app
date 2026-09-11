@@ -19,14 +19,21 @@ class UsersSeeder extends Seeder
      * online gewijzigd wachtwoord), laat hij die gegevens met rust. Zo kun je
      * het wachtwoord na de eerste login één keer aanpassen en blijft dat
      * bewaard bij volgende deploys.
+     *
+     * Het e-mailadres en wachtwoord kunnen via SEED_ADMIN_EMAIL /
+     * SEED_ADMIN_PASSWORD worden ingesteld (config/seeding.php); zonder die
+     * variabelen vallen we terug op de standaardwaarden hieronder.
      */
     public function run(): void
     {
+        $email = (string) config('seeding.admin_email', self::ADMIN_EMAIL);
+        $password = (string) config('seeding.admin_password', self::ADMIN_DEFAULT_PASSWORD);
+
         User::firstOrCreate(
-            ['email' => self::ADMIN_EMAIL],
+            ['email' => $email],
             [
                 'name' => 'Admin',
-                'password' => self::ADMIN_DEFAULT_PASSWORD,
+                'password' => $password,
                 'role' => Role::Admin,
             ]
         );
