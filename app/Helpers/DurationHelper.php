@@ -31,4 +31,12 @@ class DurationHelper
     {
         return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
+
+    /**
+     * Formatteert een aantal minuten als afgerond aantal hele uren, bijv. '8 uur'.
+     */
+    public static function formatHours(int $minutes): string
+    {
+        return round($minutes / 60).' uur';
+    }
 }

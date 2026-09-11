@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Filament\Admin\Widgets\ProgressStats;
 use App\Helpers\DurationHelper;
 use App\Models\TimeEntry;
 use Carbon\Carbon;
@@ -9,7 +10,6 @@ use Filament\Actions\Action;
 use Filament\Schemas\Components\EmbeddedTable;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Text;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
@@ -44,7 +44,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
     public function content(Schema $schema): Schema
     {
         return $schema->components([
-            View::make('filament.widgets.progress-bar'),
+            ...$this->getWidgetsSchemaComponents([ProgressStats::class]),
             $this->makeButtonRow(),
             Text::make($this->weekLabel)
                 ->size('lg')
