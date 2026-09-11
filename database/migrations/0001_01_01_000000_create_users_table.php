@@ -21,6 +21,9 @@ return new class extends Migration
             $table->string('theme_mode', 20)->default('dark');
             $table->string('accent_color', 20)->nullable()->default('amber');
             $table->integer('target_hours')->nullable();
+            $table->time('default_start_time')->nullable();
+            $table->time('default_end_time')->nullable();
+            $table->integer('default_break_minutes')->nullable();
             $table->json('ui_preferences')->nullable();
             $table->rememberToken();
             $table->timestamps();

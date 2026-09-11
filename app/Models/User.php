@@ -14,12 +14,37 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'target_hours', 'ui_preferences'])]
+#[Fillable(['name', 'email', 'password', 'role', 'target_hours', 'default_start_time', 'default_end_time', 'default_break_minutes', 'ui_preferences'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUiPreferences, Notifiable;
+
+    public const DEFAULT_START_TIME = '08:30';
+
+    public const DEFAULT_END_TIME = '17:00';
+
+    public const DEFAULT_BREAK_MINUTES = 30;
+
+    /**
+     * Standaard begintijd voor nieuwe registraties: de eigen instelling,
+     * of anders een verstandige terugvalwaarde.
+     */
+    public function defaultStartTime(): string
+    {
+        return $this->default_start_time?->format('H:i') ?? self::DEFAULT_START_TIME;
+    }
+
+    public function defaultEndTime(): string
+    {
+        return $this->default_end_time?->format('H:i') ?? self::DEFAULT_END_TIME;
+    }
+
+    public function defaultBreakMinutes(): int
+    {
+        return $this->default_break_minutes ?? self::DEFAULT_BREAK_MINUTES;
+    }
 
     public function canAccessPanel(Panel $panel): bool
     {
@@ -72,6 +97,9 @@ class User extends Authenticatable implements FilamentUser
             'role' => Role::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'default_start_time' => 'datetime:H:i',
+            'default_end_time' => 'datetime:H:i',
+            'default_break_minutes' => 'integer',
             'ui_preferences' => 'array',
         ];
     }

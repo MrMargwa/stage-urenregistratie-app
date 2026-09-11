@@ -6,6 +6,7 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -38,7 +39,14 @@ class Settings extends Page
     {
         $user = auth()->user();
 
-        $this->form->fill($user->only(['name', 'email', 'target_hours']));
+        $this->form->fill($user->only([
+            'name',
+            'email',
+            'target_hours',
+            'default_start_time',
+            'default_end_time',
+            'default_break_minutes',
+        ]));
     }
 
     protected function getHeaderActions(): array
@@ -95,6 +103,34 @@ class Settings extends Page
                             ->placeholder('bijv. 500')
                             ->helperText('Het totale aantal stage-uren dat je moet voltooien'),
                     ]),
+
+                Section::make('Standaard werktijden')
+                    ->description('Nieuwe registraties worden met deze tijden voorgevuld. Je kunt ze per dag altijd aanpassen.')
+                    ->icon('heroicon-o-clock')
+                    ->columns(3)
+                    ->schema([
+                        TimePicker::make('default_start_time')
+                            ->label('Begintijd')
+                            ->seconds(false)
+                            ->displayFormat('H:i')
+                            ->format('H:i')
+                            ->placeholder(User::DEFAULT_START_TIME),
+
+                        TimePicker::make('default_end_time')
+                            ->label('Eindtijd')
+                            ->seconds(false)
+                            ->displayFormat('H:i')
+                            ->format('H:i')
+                            ->placeholder(User::DEFAULT_END_TIME)
+                            ->afterOrEqual('default_start_time'),
+
+                        TextInput::make('default_break_minutes')
+                            ->label('Pauze (minuten)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(1440)
+                            ->placeholder((string) User::DEFAULT_BREAK_MINUTES),
+                    ]),
             ]);
     }
 
@@ -109,6 +145,9 @@ class Settings extends Page
             'name' => $data['name'] ?? null,
             'email' => $data['email'] ?? null,
             'target_hours' => $data['target_hours'] ?? null,
+            'default_start_time' => $data['default_start_time'] ?? null,
+            'default_end_time' => $data['default_end_time'] ?? null,
+            'default_break_minutes' => $data['default_break_minutes'] ?? null,
         ];
 
         if (filled($data['password'] ?? null)) {
