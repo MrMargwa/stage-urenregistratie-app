@@ -23,6 +23,7 @@ class TimeEntry extends Model
         'end_time',
         'break_minutes',
         'description',
+        'is_absent',
     ];
 
     protected $casts = [
@@ -31,7 +32,13 @@ class TimeEntry extends Model
         'end_time' => 'datetime:H:i',
         'break_minutes' => 'integer',
         'duration_minutes' => 'integer',
+        'is_absent' => 'boolean',
     ];
+
+    public function isAbsent(): bool
+    {
+        return (bool) $this->is_absent;
+    }
 
     public function user(): BelongsTo
     {
@@ -61,7 +68,7 @@ class TimeEntry extends Model
      */
     private function computeDuration(): int
     {
-        if (! $this->start_time || ! $this->end_time) {
+        if ($this->is_absent || ! $this->start_time || ! $this->end_time) {
             return 0;
         }
 
@@ -77,6 +84,12 @@ class TimeEntry extends Model
         parent::boot();
 
         static::saving(function (TimeEntry $entry): void {
+            if ($entry->isAbsent()) {
+                $entry->duration_minutes = 0;
+
+                return;
+            }
+
             if ($entry->start_time && $entry->end_time) {
                 $start = $entry->start_time;
                 $end = $entry->end_time;

@@ -25,14 +25,21 @@ class TimeEntriesTable
 
                 TextColumn::make('start_time')
                     ->label('Begintijd')
-                    ->time('H:i'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->start_time?->format('H:i') ?? '')),
 
                 TextColumn::make('end_time')
                     ->label('Eindtijd')
-                    ->time('H:i'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->end_time?->format('H:i') ?? '')),
 
                 TextColumn::make('break_minutes')
-                    ->label('Pauze (minuten)'),
+                    ->label('Pauze')
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->break_minutes ?? 0).' min'),
 
                 TextColumn::make('description')
                     ->label('Beschrijving')
@@ -41,7 +48,11 @@ class TimeEntriesTable
 
                 TextColumn::make('duration_minutes')
                     ->label('Duur')
-                    ->formatStateUsing(fn (?int $state) => DurationHelper::formatMinutes($state ?? 0)),
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? 'Afwezig'
+                        : DurationHelper::formatMinutes($record->duration_minutes)),
             ])
             ->filters([
                 SelectFilter::make('week')
