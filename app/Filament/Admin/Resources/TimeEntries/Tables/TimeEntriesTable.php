@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\TimeEntries\Tables;
 use App\Helpers\DurationHelper;
 use App\Models\TimeEntry;
 use Carbon\Carbon;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -34,7 +35,9 @@ class TimeEntriesTable
                     ->label('Pauze (minuten)'),
 
                 TextColumn::make('description')
-                    ->label('Beschrijving'),
+                    ->label('Beschrijving')
+                    ->limit(40)
+                    ->tooltip(fn (TimeEntry $record): string => $record->description),
 
                 TextColumn::make('duration_minutes')
                     ->label('Duur')
@@ -59,6 +62,12 @@ class TimeEntriesTable
             ])
             ->recordActions([
                 EditAction::make(),
+            ])
+            ->emptyStateHeading('Nog geen tijdregistraties')
+            ->emptyStateDescription('Zodra je uren invult, verschijnen ze hier. Begin met je eerste registratie.')
+            ->emptyStateIcon('heroicon-o-clock')
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 

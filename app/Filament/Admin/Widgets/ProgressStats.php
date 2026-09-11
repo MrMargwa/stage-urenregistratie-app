@@ -38,11 +38,21 @@ class ProgressStats extends StatsOverviewWidget
 
         $percentageLabel = number_format($percentage, 1, ',', '.').'%';
 
+        $gelopenStat = Stat::make('Gelopen', $formattedTotal)
+            ->icon(Heroicon::OutlinedClock)
+            ->color('primary');
+
+        if ($totalMinutes <= 0) {
+            $gelopenStat
+                ->description('Vul hier je stage-uren in om te beginnen')
+                ->descriptionIcon(Heroicon::OutlinedArrowTrendingUp, IconPosition::After)
+                ->url(fn (): string => route('filament.dashboard.resources.time-entries.create'));
+        } else {
+            $gelopenStat->description($percentageLabel.' voltooid');
+        }
+
         return [
-            Stat::make('Gelopen', $formattedTotal)
-                ->description($percentageLabel.' voltooid')
-                ->icon(Heroicon::OutlinedClock)
-                ->color('primary'),
+            $gelopenStat,
             Stat::make('Doel', $target.' uur')
                 ->description('totale stage-uren')
                 ->icon(Heroicon::OutlinedFlag)

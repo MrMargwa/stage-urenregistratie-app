@@ -120,7 +120,9 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->label('Pauze')
                     ->formatStateUsing(fn (int $state): string => $state.' min'),
                 TextColumn::make('description')
-                    ->label('Omschrijving'),
+                    ->label('Omschrijving')
+                    ->limit(40)
+                    ->tooltip(fn (TimeEntry $record): string => $record->description),
                 TextColumn::make('duration_minutes')
                     ->label('Duur')
                     ->formatStateUsing(fn (int $state): string => DurationHelper::formatMinutes($state))
@@ -128,7 +130,16 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
             ])
             ->defaultSort('date', 'asc')
             ->paginated(false)
-            ->searchable(false);
+            ->searchable(false)
+            ->emptyStateHeading('Nog geen uren deze week')
+            ->emptyStateDescription('Vul je stage-uren in om je weekoverzicht te vullen.')
+            ->emptyStateIcon('heroicon-o-clipboard-document-list')
+            ->emptyStateActions([
+                Action::make('createTimeEntry')
+                    ->label('Tijdregistratie toevoegen')
+                    ->icon(Heroicon::OutlinedPlus)
+                    ->url(fn (): string => route('filament.dashboard.resources.time-entries.create')),
+            ]);
     }
 
     private function getWeekEntries(): Collection
