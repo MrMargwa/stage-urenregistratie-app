@@ -33,7 +33,7 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `DB_CONNECTION` | `pgsql` |
 | `DB_URL` | `${{Postgres.DATABASE_URL}}` |
 | `LOG_CHANNEL` | `stderr` (Railway logt naar stderr; `single`/file-logging is vluchtig en verdwijnt) |
-| `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
+| `SESSION_DRIVER` | **`database`** — sessies overleven dan slaapstand/restart (Postgres is persistent). Redis is geheugen-gebaseerd en kan op het gratis plan data verliezen → dan word je uitgelogd na een koude start. Gebruik eventueel `redis` **alleen** voor cache. |
 | `QUEUE_CONNECTION` | `sync` (of `redis` voor async exports) |
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
 | `SESSION_SECURE_COOKIE` | `true` — de app draait altijd op HTTPS; zo wordt de sessiecookie nooit over onversleuteld verkeer verstuurd |
@@ -65,7 +65,7 @@ Elke wijziging in Variables triggert automatisch een herstart.
    - `REDIS_URL` = `${{Redis.REDIS_URL}}` (of `${{<servicenaam>.REDIS_URL}}` als je Redis anders heet).
      Dit is een **service-referentie**: Railway vult automatisch de interne URL van je Redis-service in.
      Niet zelf de URL in elkaar zetten, gewoon deze referentie gebruiken.
-4. Zet `CACHE_STORE=redis` en `SESSION_DRIVER=redis` (en optioneel `QUEUE_CONNECTION=redis`).
+4. Zet `CACHE_STORE=redis` (snelheidswinst) en laat `SESSION_DRIVER=database` staan (sessies blijven dan bewaard bij een slaapstand/restart).
 5. De build in `nixpacks.toml` installeert al `php84Extensions.redis`, dus niets extra's nodig in code.
 
 **Werkt de verbinding?** In de runtime-logs (of via `railway run`) kun je testen met:
@@ -77,9 +77,14 @@ php artisan tinker --execute="dump(Cache::store('redis')->put('test', 1, 10));"
 ```
 
 > ⚠️ Denk aan een **order van schakelen**: zet eerst de Redis-service + `REDIS_URL` erbij, laat de app
-> herstarten, en **pas daarna** `CACHE_STORE`/`SESSION_DRIVER` naar `redis` omzetten. Anders slaat de app
-> sessies nergens op en word je uitgelogd. (Praktisch: zet alles in één keer en laat één deploy
-> volledig afronden.)
+> herstarten, en **pas daarna** `CACHE_STORE` naar `redis` omzetten. Anders slaat de app
+> cache nergens op. (Praktisch: zet alles in één keer en laat één deploy volledig afronden.)
+>
+> 🔐 **Wil je nooit meer uitgelogd worden na een koude start?** Zorg dat `SESSION_DRIVER=database`
+> staat en **niet** `redis`. Sessies in de database overleven een container-restart; sessies in
+> Redis (geheugen) kunnen verloren gaan zodra de gratis Redis-service slaapt. De keepalive pingt
+> daarnaast elke 3 minuten `/keepalive` (via `auth`-middleware), zodat een actieve browser je
+> sessie ook fris houdt.
 
 Geen Redis (alles via PostgreSQL) werkt ook prima — het is puur een snelheidsoptimalisatie.
 

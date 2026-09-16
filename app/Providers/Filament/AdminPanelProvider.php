@@ -64,7 +64,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn (): string => '<script src="' . asset('js/keepalive.js') . '?v=1"></script>',
+                fn (): string => '<script src="' . asset('js/keepalive.js') . '?v=3"></script>',
             );
     }
 }

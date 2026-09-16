@@ -140,12 +140,23 @@
     var toastEl = null;
     var toastTimer = null;
 
+    function themeColor() {
+        try {
+            var el = document.querySelector('html');
+            var cs = window.getComputedStyle(el);
+            var v = cs.getPropertyValue('--primary-500').trim() || cs.getPropertyValue('--primary-400').trim();
+            return v || '#6366f1';
+        } catch (error) {
+            return '#6366f1';
+        }
+    }
+
     function showToast(message, type) {
         if (toastEl) {
             toastEl.remove();
         }
         var dark = document.documentElement.classList.contains('dark');
-        var bg = dark ? '#334155' : '#0f172a';
+        var bg = themeColor();
         if (type === 'error') {
             bg = dark ? '#7f1d1d' : '#b91c1c';
         }
@@ -186,9 +197,9 @@
         hideOverlay();
         var dark = document.documentElement.classList.contains('dark');
         var cardBg = dark ? '#1e293b' : '#ffffff';
-        var cardFg = dark ? '#e2e8f0' : '#0f172a';
-        var muted = dark ? '#94a3b8' : '#64748b';
-        var accent = '#6366f1';
+        var cardFg = dark ? '#f1f5f9' : '#0f172a';
+        var muted = dark ? '#94a3b8' : '#475569';
+        var accent = themeColor();
 
         var dim = document.createElement('div');
         dim.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(2,6,23,.6);display:flex;align-items:center;justify-content:center;padding:24px;';
@@ -258,6 +269,15 @@
         return document.querySelector('[wire\\:click="create"], [wire\\:click="save"], [wire\\:click="createAnother"]');
     }
 
+    function resubmitForm() {
+        var btn = findSubmitButton();
+        if (!btn) {
+            return false;
+        }
+        btn.click();
+        return true;
+    }
+
     function isFormSubmissionRequest(payload) {
         if (!payload) {
             return false;
@@ -277,6 +297,17 @@
         return false;
     }
 
+    function retryNow() {
+        saveDraft();
+        if (resubmitForm()) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(retryKey(pathOf()), '1');
+        } catch (error) {}
+        window.location.reload();
+    }
+
     function handleSubmitFailure() {
         saveDraft();
         var attempts = parseInt(window.sessionStorage.getItem(retryKey(pathOf())) || '0', 10) + 1;
@@ -294,7 +325,8 @@
                         label: 'Nu opnieuw proberen',
                         primary: true,
                         onClick: function () {
-                            window.location.reload();
+                            hideOverlay();
+                            retryNow();
                         },
                     },
                     {
@@ -305,7 +337,8 @@
             });
             window.setTimeout(function () {
                 if (overlayEl) {
-                    window.location.reload();
+                    hideOverlay();
+                    retryNow();
                 }
             }, 7000);
         } else {
@@ -317,10 +350,8 @@
                         label: 'Opnieuw proberen',
                         primary: true,
                         onClick: function () {
-                            try {
-                                window.sessionStorage.setItem(retryKey(pathOf()), '1');
-                            } catch (error) {}
-                            window.location.reload();
+                            hideOverlay();
+                            retryNow();
                         },
                     },
                     {
@@ -396,7 +427,7 @@
 
     function startKeepAlive() {
         function ping() {
-            fetch('/up?_=' + Date.now(), { cache: 'no-store', referrerPolicy: 'no-referrer' })
+            fetch('/keepalive?_=' + Date.now(), { cache: 'no-store', referrerPolicy: 'no-referrer' })
                 .then(function () {})
                 .catch(function () {});
         }
