@@ -2,6 +2,7 @@
 
 namespace App\Filament\Exports;
 
+use App\Enums\AbsenceType;
 use App\Helpers\DurationHelper;
 use App\Models\TimeEntry;
 use Filament\Actions\Exports\ExportColumn;
@@ -28,16 +29,21 @@ class TimeEntryExporter extends Exporter
                 ->label('Datum')
                 ->formatStateUsing(fn ($state) => $state->format('d-m-Y')),
 
+            ExportColumn::make('absence_type')
+                ->label('Dagtype')
+                ->formatStateUsing(fn ($state) => $state instanceof AbsenceType ? $state->label() : ''),
+
             ExportColumn::make('start_time')
                 ->label('Begintijd')
-                ->formatStateUsing(fn ($state) => $state->format('H:i')),
+                ->formatStateUsing(fn ($state) => $state ? $state->format('H:i') : ''),
 
             ExportColumn::make('end_time')
                 ->label('Eindtijd')
-                ->formatStateUsing(fn ($state) => $state->format('H:i')),
+                ->formatStateUsing(fn ($state) => $state ? $state->format('H:i') : ''),
 
             ExportColumn::make('break_minutes')
-                ->label('Pauze (minuten)'),
+                ->label('Pauze (minuten)')
+                ->formatStateUsing(fn ($state) => $state ?? 0),
 
             ExportColumn::make('description')
                 ->label('Beschrijving'),
@@ -96,11 +102,12 @@ class TimeEntryExporter extends Exporter
 
         $options->setColumnWidth(10, 1); // Week
         $options->setColumnWidth(12, 2); // Datum
-        $options->setColumnWidth(10, 3); // Begintijd
-        $options->setColumnWidth(10, 4); // Eindtijd
-        $options->setColumnWidth(18, 5); // Pauze (minuten)
-        $options->setColumnWidth(40, 6); // Beschrijving
-        $options->setColumnWidth(12, 7); // Duur
+        $options->setColumnWidth(13, 3); // Dagtype
+        $options->setColumnWidth(10, 4); // Begintijd
+        $options->setColumnWidth(10, 5); // Eindtijd
+        $options->setColumnWidth(18, 6); // Pauze (minuten)
+        $options->setColumnWidth(40, 7); // Beschrijving
+        $options->setColumnWidth(12, 8); // Duur
 
         return $options;
     }

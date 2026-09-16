@@ -12,7 +12,7 @@ it('laat een admin een andere admin verwijderen zolang niet de laatste', functio
 
 it('laat een admin een gewone gebruiker verwijderen', function () {
     $admin = User::factory()->admin()->create();
-    $user = User::factory()->create(['role' => Role::User]);
+    $user = User::factory()->create(['role' => Role::Student]);
 
     expect($admin->can('delete', $user))->toBeTrue();
 });

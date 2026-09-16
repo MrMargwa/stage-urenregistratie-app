@@ -55,6 +55,8 @@ class UsersTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('Nog geen gebruikers')
+            ->emptyStateDescription('Voeg de eerste gebruiker toe om te beginnen.');
     }
 }

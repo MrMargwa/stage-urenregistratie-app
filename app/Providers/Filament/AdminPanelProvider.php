@@ -6,9 +6,9 @@ namespace App\Providers\Filament;
 use Andreia\FilamentUiSwitcher\FilamentUiSwitcherPlugin;
 use App\Filament\Admin\Pages\Dashboard;
 use App\Filament\Admin\Pages\Settings;
+use App\Filament\Admin\Widgets\ProgressStats;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->id('dashboard')
+            ->default()
             ->path('dashboard')
             ->login()
             ->defaultThemeMode(ThemeMode::Dark)
@@ -46,12 +47,12 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\Filament\Admin\Widgets')
             ->widgets([
                 AccountWidget::class,
+                ProgressStats::class,
             ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
                 SubstituteBindings::class,

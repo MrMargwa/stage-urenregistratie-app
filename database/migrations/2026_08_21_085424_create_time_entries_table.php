@@ -14,17 +14,21 @@ return new class extends Migration
         Schema::create('time_entries', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete()->index();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete()->index();
 
             $table->date('date')->index();
 
-            $table->time('start_time');
+            $table->time('start_time')->nullable();
 
-            $table->time('end_time');
+            $table->time('end_time')->nullable();
 
             $table->integer('break_minutes')->default(0);
 
+            $table->unsignedInteger('duration_minutes')->default(0);
+
             $table->text('description')->nullable();
+
+            $table->boolean('is_absent')->default(false);
 
             $table->timestamps();
 

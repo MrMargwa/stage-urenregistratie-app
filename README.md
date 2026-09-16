@@ -7,7 +7,7 @@ pauze en beschrijving per registratie; duur wordt automatisch berekend.
 
 ### Urenregistratie
 - Registraties aanmaken, bewerken en verwijderen (`/dashboard/time-entries`)
-- Automatische duurberekening (werkt ook over middernacht heen)
+- Automatische duurberekening (eind − begin − pauze; nachtdiensten worden niet ondersteund)
 - Overlap-validatie: overlappende registraties op dezelfde dag worden geweigerd
 - **Weekstaat-filter**: selecteer een week in de lijst om alleen die week te bekijken
 - **Exporteer naar `.xlsx`** (knop "Exporteren (.xlsx)"): exporteert je uren zoals je ze ziet —
@@ -20,7 +20,7 @@ pauze en beschrijving per registratie; duur wordt automatisch berekend.
 - Totaal aantal uren + stage-voortgangsbalk op basis van je doel (instelbaar in Instellingen)
 
 ### Rollen & beveiliging
-- Rollen `admin`, `user` of `student` op elk account (alleen admins kunnen rollen toewijzen)
+- Twee rollen: `admin` en `student` op elk account (alleen admins kunnen rollen toewijzen)
 - **Gebruikersbeheer** (`Beheer → Gebruikers`) is alleen zichtbaar én toegankelijk voor admins.
   Een admin kan gebruikers aanmaken/bewerken/verwijderen; bij het verwijderen van een gebruiker
   worden diens stage-uren ook verwijderd.
@@ -48,13 +48,15 @@ php artisan migrate --seed
 
 Zonder Docker kun je ook gewoon `php artisan serve` gebruiken zolang `DB_*` in `.env` klopt.
 
-De seeder maakt bij een nieuwe database precies één admin-account aan: `admin@admin.com` /
-`Admin1!23` (wijzig het wachtwoord direct na de eerste login via Instellingen).
+De seeder maakt bij een nieuwe database precies één admin-account aan
+(`admin@admin.com` / `Admin1!23` — wijzig het wachtwoord direct na de eerste login via
+Instellingen). Via `SEED_ADMIN_EMAIL` en `SEED_ADMIN_PASSWORD` in `.env` kun je deze
+standaardwaarden overschrijven.
 
 ### Tests
 
 ```bash
-php artisan test        # Pest, draait op sqlite :memory: (instellingen in phpunit.xml)
+vendor/bin/pest         # Pest, draait op sqlite :memory: (instellingen in phpunit.xml)
 vendor/bin/pint         # code style
 ```
 
@@ -62,7 +64,9 @@ vendor/bin/pint         # code style
 
 Zie [DEPLOY.md](DEPLOY.md) voor het live zetten.
 
-> **Belangrijk:** alle migraties zijn **additief** (nieuwe kolommen met default/nullable, nooit
-> drop of destructieve wijziging). Daardoor kan er veilig gedeployed worden zonder de
-> productiedata te verliezen. Het verwijderen van de stage-uren bij een verwijderde gebruiker
-> gebeurt op applicatieniveau (User::deleting event) en vereist geen DB-migratie.
+> **Belangrijk:** het schema wordt opgebouwd uit vijf nette `create_`-migraties in eindstate (geen
+> `alter_`/`add_`-stapels). Verdere wijzigingen aan het schema doe je **additief** (nieuwe kolommen
+> met default/nullable, nieuwe tabellen) — géén drops of data-herschrijven. Bij een reset van de
+> lokale database: `php artisan migrate:fresh --seed`. Het verwijderen van de stage-uren bij een
+> verwijderde gebruiker gebeurt op applicatieniveau (User::deleting event) én via een FK met
+> `cascadeOnDelete` in de database.

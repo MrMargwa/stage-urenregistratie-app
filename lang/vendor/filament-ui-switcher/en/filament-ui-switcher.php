@@ -1,29 +1,29 @@
 <?php
 
 return [
-    'button.aria_label' => 'Weergave-instellingen',
+    'button.aria_label' => 'UI Switcher',
 
-    'modal.heading' => 'Jouw instellingen',
+    'modal.heading' => 'Settings',
 
-    'loading.message' => 'Even toepassen...',
+    'loading.message' => 'Applying changes...',
 
-    'reset.button' => 'Alles herstellen',
-    'reset.aria_label' => 'Alle instellingen terugzetten naar de standaardwaarden',
-    'reset.tooltip' => 'Terug naar de standaardinstellingen',
+    'reset.button' => 'Reset all',
+    'reset.aria_label' => 'Reset all settings to default',
+    'reset.tooltip' => 'Reset all settings to default',
 
-    'mode.heading' => 'Weergavemodus',
+    'mode.heading' => 'Mode',
 
-    'layout.heading' => 'Indeling',
-    'layout.sidebar' => 'Zijbalk',
+    'layout.heading' => 'Layout',
+    'layout.sidebar' => 'Sidebar',
     'layout.compact' => 'Compact',
-    'layout.no_topbar' => 'Zonder bovenbalk',
-    'layout.topbar' => 'Bovenbalk',
+    'layout.no_topbar' => 'No Topbar',
+    'layout.topbar' => 'Topbar',
 
-    'color.heading' => 'Kleuren',
-    'color.presets' => 'Kleurthema’s',
-    'color.custom' => 'Eigen kleur',
+    'color.heading' => 'Color',
+    'color.presets' => 'Presets',
+    'color.custom' => 'Custom',
 
-    'font.heading' => 'Lettertype',
-    'font.family' => 'Lettertype',
-    'font.size' => 'Tekstgrootte',
+    'font.heading' => 'Font',
+    'font.family' => 'Family',
+    'font.size' => 'Size',
 ];

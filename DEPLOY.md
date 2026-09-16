@@ -36,6 +36,7 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 | `SESSION_DRIVER` | `redis` (of `database` zonder Redis-service) |
 | `QUEUE_CONNECTION` | `sync` (of `redis` voor async exports) |
 | `CACHE_STORE` | `redis` (of `database` zonder Redis-service) |
+| `SESSION_SECURE_COOKIE` | `true` — de app draait altijd op HTTPS; zo wordt de sessiecookie nooit over onversleuteld verkeer verstuurd |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` — **alleen** als je een Redis-service toevoegt |
 
 > ⚠️ `${{Postgres.DATABASE_URL}}` verwijst naar de database-service. Heet jouw database-service anders (bijv. `postgres` of `database`), pas dan het eerste deel aan: `${{<servicenaam>.DATABASE_URL}}`.
@@ -107,13 +108,14 @@ In de pre-deploy-stap draait **altijd** `php artisan migrate --force`, gevolgd d
 twee dingen:
 
 - Staat er nog geen admin-account? Dan maakt hij `admin@admin.com` aan (rol `admin`) met het
-  **standaard wachtwoord `Admin1!23`**.
+  **standaard wachtwoord `Admin1!23`**. Via de optionele variables `SEED_ADMIN_EMAIL` en
+  `SEED_ADMIN_PASSWORD` (zie `config/seeding.php`) kun je beide standaardwaarden overschrijven.
 - Bestaat de admin al? Dan laat hij alles met rust — ook een online gewijzigd wachtwoord blijft
   bewaard en wordt nooit teruggezet.
 
 > ⚠️ **Wijzig het admin-wachtwoord direct na de eerste login** via Instellingen → Mijn account.
-> Er zijn géén omgevingsvariabelen of `RUN_SEED`-flags meer nodig; de seeder is een no-op zodra de
-> admin bestaat. Daarna voeg je zelf meer gebruikers toe via Beheer → Gebruikers.
+> De seeder is verder een no-op zodra de admin bestaat; er zijn géén `RUN_SEED`-flags nodig.
+> Daarna voeg je zelf meer gebruikers toe via Beheer → Gebruikers.
 
 Log daarna in op `<jouw-domein>/dashboard`.
 
@@ -126,34 +128,40 @@ Log daarna in op `<jouw-domein>/dashboard`.
 - Exports werken direct (`QUEUE_CONNECTION=sync`, geen worker nodig).
 - De app wordt geserved door Nginx + PHP-FPM (multi-process) in plaats van de single-threaded `php artisan serve` — dit is de grootste snelheidswinst ten opzichte van voorheen.
 
-## Nieuwe functionaliteit & migratie-gedrag (aug 2026)
+## Migraties & data
 
-De app is multi-user geworden. Wat er bij het deployen van deze versie met je bestaande data gebeurt:
+Het volledige schema wordt opgebouwd uit vijf nette **`create_`-migraties** in eindstate:
 
-| Wijziging | Effect op bestaande data |
+| Migratie | Tabellen |
 |---|---|
-| Kolom `role` op `users` | Bestaande accounts krijgen default `user`. De `UsersSeeder` zorgt dat de admin-account de rol `admin` houdt. |
-| Kolom `user_id` op `time_entries` | Bestaande uren worden tijdens de migratie automatisch gekoppeld aan jouw admin-account, zodat niets zoekraakt of "eigenaarloos" wordt. |
-| Kolommen `theme_mode` op `users` | Krijgt default (`dark`); gedrag verandert niet. |
+| `0001_01_01_000000_create_users_table` | `users`, `password_reset_tokens`, `sessions` |
+| `0001_01_01_000001_create_cache_table` | `cache`, `cache_locks` |
+| `0001_01_01_000002_create_jobs_table` | `jobs`, `job_batches`, `failed_jobs` |
+| `2026_08_21_085424_create_time_entries_table` | `time_entries` |
+| `2026_08_27_101950_create_exports_table` | `exports` (Filament-exports) |
 
-> ℹ️ De kolom `accent_color` op `users` is historisch (niet actief gebruikt in de app) en blijft
-> staan; er is geen destructieve migratie voor nodig.
+> In september 2026 zijn de eerder losse `alter_/add_/update_/drop_`-migraties samengevoegd tot
+> deze eindstate. De app stond toen nog maar net in productie, dus beide databases zijn opnieuw
+> opgebouwd: lokaal met `php artisan migrate:fresh --seed` (in de Docker-app-container) en op
+> Railway door de database even te resetten. De Railway pre-deploy draait daarna gewoon
+> `php artisan migrate --force` en bouwt het schema vanaf nul op.
 
-**Rule voor toekomstige migraties:** altijd additief (nieuwe kolommen met `default()` of nullable,
-nieuwe tabellen). Nooit kolommen droppen of data herschrijven in een migratie — dan blijft
-deployen zonder dataverlies gegarandeerd.
+**Rule voor de toekomst:** wijzig het schema alleen nog via **additieve** migraties — nieuwe
+kolommen met `default()` of nullable, nieuwe tabellen. Nooit kolommen droppen of data herschrijven
+in een migratie — zo blijft deployen zonder dataverlies gegarandeerd.
 
 > ✅ **Je gebruikersdata is veilig bij elke deploy.** De pre-deploy-stap (`railway/pre-deploy.sh`) draait
 > altijd `php artisan migrate --force` (additief, verwijdert nooit data) en daarna `db:seed` — die seeder
 > is idempotent (maakt alleen de admin aan als die ontbreekt). Er wordt **nooit** `migrate:fresh`,
 > `migrate:refresh` of een reset-seed gedraaid op Railway — zo hou je de ingevulde stage-uren van
-> alle users intact.
+> alle users intact. De enige uitzondering was de eenmalige schema-consolidatie (sept 2026), die
+> handmatig is gedaan toen er nog geen echte data stond.
 
 Nieuw sinds deze versie:
 
 - Gebruikersbeheer door admins (accounts aanmaken/bewerken/verwijderen; geen self-registration).
-  Bij het verwijderen van een gebruiker worden diens stage-uren ook verwijderd
-  (User::deleting event, applicatieniveau — geen DB-migratie nodig).
+  Bij het verwijderen van een gebruiker worden diens stage-uren ook verwijderd (User::deleting
+  event + FK met `cascadeOnDelete` in de database).
 - Iedereen — óók de admin — ziet alleen eigen uren.
 - Instellingenpagina: account beheren + thema (donker/licht/systeem) + stage-uren doel.
 - Excel-export (.xlsx).

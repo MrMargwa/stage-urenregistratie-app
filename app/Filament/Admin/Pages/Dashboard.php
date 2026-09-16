@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Filament\Admin\Widgets\ProgressStats;
 use App\Helpers\DurationHelper;
 use App\Models\TimeEntry;
 use Carbon\Carbon;
@@ -9,7 +10,6 @@ use Filament\Actions\Action;
 use Filament\Schemas\Components\EmbeddedTable;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Text;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
@@ -44,7 +44,7 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
     public function content(Schema $schema): Schema
     {
         return $schema->components([
-            View::make('filament.widgets.progress-bar'),
+            ...$this->getWidgetsSchemaComponents([ProgressStats::class]),
             $this->makeButtonRow(),
             Text::make($this->weekLabel)
                 ->size('lg')
@@ -112,23 +112,44 @@ class Dashboard extends \Filament\Pages\Dashboard implements HasTable
                     ->state(fn (TimeEntry $record): string => $record->date->translatedFormat('l')),
                 TextColumn::make('start_time')
                     ->label('Start')
-                    ->time('H:i'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->start_time?->format('H:i') ?? '')),
                 TextColumn::make('end_time')
                     ->label('Eind')
-                    ->time('H:i'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->end_time?->format('H:i') ?? '')),
                 TextColumn::make('break_minutes')
                     ->label('Pauze')
-                    ->formatStateUsing(fn (int $state): string => $state.' min'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->break_minutes ?? 0).' min'),
                 TextColumn::make('description')
-                    ->label('Omschrijving'),
+                    ->label('Omschrijving')
+                    ->limit(40)
+                    ->tooltip(fn (TimeEntry $record): string => $record->description),
                 TextColumn::make('duration_minutes')
                     ->label('Duur')
-                    ->formatStateUsing(fn (int $state): string => DurationHelper::formatMinutes($state))
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? 'Afwezig'
+                        : DurationHelper::formatMinutes($record->duration_minutes))
                     ->weight('bold'),
             ])
             ->defaultSort('date', 'asc')
             ->paginated(false)
-            ->searchable(false);
+            ->searchable(false)
+            ->emptyStateHeading('Nog geen uren deze week')
+            ->emptyStateDescription('Vul je stage-uren in om je weekoverzicht te vullen.')
+            ->emptyStateIcon('heroicon-o-clipboard-document-list')
+            ->emptyStateActions([
+                Action::make('createTimeEntry')
+                    ->label('Tijdregistratie toevoegen')
+                    ->icon(Heroicon::OutlinedPlus)
+                    ->url(fn (): string => route('filament.dashboard.resources.time-entries.create')),
+            ]);
     }
 
     private function getWeekEntries(): Collection

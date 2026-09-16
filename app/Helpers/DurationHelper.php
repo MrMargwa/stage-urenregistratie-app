@@ -9,8 +9,9 @@ class DurationHelper
      *
      * Werkt op 'H:i'-tijdstrings zodat dezelfde formule overal kan worden
      * gebruikt (models én migraties) zonder dat de logica uit elkaar loopt.
-     * Rondt middernacht af: als de eindtijd vóór de begintijd ligt, wordt
-     * aangenomen dat het blok de volgende dag eindigt (+24 uur).
+     * De geldigheid van de tijden wordt gegarandeerd door de validatie in
+     * TimeEntry::boot() (eindtijd mag niet vóór begintijd liggen); een
+     * ongeldige combinatie levert hier simpelweg 0 minuten op.
      */
     public static function toMinutes(string $startTime, string $endTime, int $breakMinutes = 0): int
     {
@@ -20,13 +21,7 @@ class DurationHelper
         $start = ($startH * 60) + $startM;
         $end = ($endH * 60) + $endM;
 
-        $minutes = $end - $start;
-
-        if ($minutes < 0) {
-            $minutes += 1440;
-        }
-
-        return max(0, $minutes - $breakMinutes);
+        return max(0, ($end - $start) - $breakMinutes);
     }
 
     /**
@@ -38,10 +33,10 @@ class DurationHelper
     }
 
     /**
-     * Formatteert een aantal seconden (afgerond op minuten) als 'HH:MM'.
+     * Formatteert een aantal minuten als afgerond aantal hele uren, bijv. '8 uur'.
      */
-    public static function formatSeconds(int $seconds): string
+    public static function formatHours(int $minutes): string
     {
-        return self::formatMinutes((int) round($seconds / 60));
+        return round($minutes / 60).' uur';
     }
 }

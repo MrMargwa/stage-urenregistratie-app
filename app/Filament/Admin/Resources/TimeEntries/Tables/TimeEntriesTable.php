@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\TimeEntries\Tables;
 use App\Helpers\DurationHelper;
 use App\Models\TimeEntry;
 use Carbon\Carbon;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -24,21 +25,34 @@ class TimeEntriesTable
 
                 TextColumn::make('start_time')
                     ->label('Begintijd')
-                    ->time('H:i'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->start_time?->format('H:i') ?? '')),
 
                 TextColumn::make('end_time')
                     ->label('Eindtijd')
-                    ->time('H:i'),
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->end_time?->format('H:i') ?? '')),
 
                 TextColumn::make('break_minutes')
-                    ->label('Pauze (minuten)'),
+                    ->label('Pauze')
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? '—'
+                        : ($record->break_minutes ?? 0).' min'),
 
                 TextColumn::make('description')
-                    ->label('Beschrijving'),
+                    ->label('Beschrijving')
+                    ->limit(40)
+                    ->tooltip(fn (TimeEntry $record): string => $record->description),
 
                 TextColumn::make('duration_minutes')
                     ->label('Duur')
-                    ->formatStateUsing(fn (?int $state) => DurationHelper::formatMinutes($state ?? 0)),
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn (TimeEntry $record): string => $record->isAbsent()
+                        ? 'Afwezig'
+                        : DurationHelper::formatMinutes($record->duration_minutes)),
             ])
             ->filters([
                 SelectFilter::make('week')
@@ -59,6 +73,12 @@ class TimeEntriesTable
             ])
             ->recordActions([
                 EditAction::make(),
+            ])
+            ->emptyStateHeading('Nog geen tijdregistraties')
+            ->emptyStateDescription('Zodra je uren invult, verschijnen ze hier. Begin met je eerste registratie.')
+            ->emptyStateIcon('heroicon-o-clock')
+            ->emptyStateActions([
+                CreateAction::make(),
             ]);
     }
 
