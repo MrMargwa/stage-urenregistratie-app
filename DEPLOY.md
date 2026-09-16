@@ -158,12 +158,45 @@ Nieuw sinds deze versie:
 - Instellingenpagina: account beheren + thema (donker/licht/systeem) + stage-uren doel.
 - Excel-export (.xlsx).
 
+## Gratis oplossing voor cold-start (slaperige pod) & dataverlies
+
+Op het gratis Railway-plan slaapt de container na een tijd zonder verkeer (scale-to-zero).
+De eerste request na het opstarten kan daardoor een `500` geven. Dit lossen we op met een
+client-side scriptje (`public/js/keepalive.js`, geïnjecteerd via de AdminPanelProvider) dat drie dingen doet:
+
+1. **Keepalive** — zolang de site in je browser open staat, verstuurt de pagina elke 3 minuten
+   een klein GET-request naar `/up` (de Laravel-healthroute). Railway ziet daardoor constant verkeer
+   en houdt de container wakker: je wordt nooit meer midden in een formulier uitgelogd door een slaperij.
+   Alleen wanneer **niemand** de site open heeft slaapt de container nog — dat is prima, want dan
+   heeft niemand hem nodig.
+
+2. **Concept-bewaarder (localStorage)** — elk veld dat je invoert wordt (met 600ms debounce) als
+   concept opgeslagen in de browser. Krijg je tóch een fout of de server valt uit, dan vult de pagina
+   je concept na een refresh automatisch weer in (24 uur geldig, wachtwoorden worden overgeslagen).
+
+3. **Automatische retry** — lukt een opslag niet (500 of netwerkverlies), dan:
+   - wordt je invoer eerst veilig bewaard,
+   - toont de pagina een nette melding i.p.v. een kale `500`,
+   - wordt er automatisch nog 2× opnieuw geprobeerd,
+   - daarna verschijnt er een knop **"Opnieuw proberen"**.
+
+> 💡 **Cold-start 100% voorkomen (gratis)?** Zolang *niemand* de site open heeft, kan een gratis
+> platform de container nog steeds laten slapen — dan verhelp je de eerste-laat-ontwaken niet via de
+> browser. Installeer dan een **gratis uptime-monitor** (bijv. UptimeRobot, 50 monitors gratis) die
+> elke 1-5 minuten je domein (of `/up`) pingt. Zo blijft verkeer 24/7 binnenkomen en slaapt de
+> container nooit meer, ook 's nachts.
+
+> ⚠️ **Cache-busting:** nginx serveert `.js`-bestanden met `30d, immutable`. Pas je `keepalive.js`
+> aan, bump dan de versie in `AdminPanelProvider.php` (nu `?v=1`) zodat browsers de nieuwe versie
+> ophalen.
+
 ## Troubleshooting
 
 | Probleem | Oplossing |
 |---|---|
 | Inloggen lukt, maar daarna `403 Forbidden` op `/dashboard` | Het `User`-model implementeert het `FilamentUser`-contract niet — Filament weigert dan élke user in productie (lokaal met `APP_ENV=local` lijkt het te werken). Fix: `User extends Authenticatable implements FilamentUser` mét `canAccessPanel(): bool` (staat in de repo). |
 | `500 Internal Server Error` op `/dashboard/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
+| `500` na een periode zonder bezoekers (slaperige pod) of bij opslaan, en formulier-invoer weg | Cold start van de gratis (scale-to-zero) container + Livewire verliest de form-state. De app heeft nu een keepalive (`/up`-ping), een localStorage-concept en een automatische retry met "Opnieuw proberen"-knop — zie de sectie **Gratis oplossing voor cold-start & dataverlies** hierboven. |
 | `Application failed to respond` op het domein | **Meestal een port-mismatch.** De app (nginx) luistert op **8000** (= domein **target port**). Heeft Railway een handmatige `PORT`-variabele (bv. `8080`) die afwijkt, dan klopt de luisterpoort nooit. Oplossing: verwijder de handmatige `PORT`-variabele en check dat domein → **target port** = `8000`. Deploy-logs moeten `[start] nginx will listen on 0.0.0.0:8000` tonen. Zie je een crash-loop, check dan de wachtlus-fix hieronder. |
 | Build-log noemt `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert Nixpacks. Staat die er niet in? Zet hem dan handmatig: app-service → **Settings** → **Build** → Builder → **Nixpacks**, en redeploy. |
 | `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Nixpacks koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste (lockfile heeft ≥8.4.1 nodig). Opgelost door `"php": "^8.4"` + install-fase met `--no-dev`. |
