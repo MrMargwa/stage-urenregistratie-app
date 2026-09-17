@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Admin\Resources\TimeEntries\Pages\CreateTimeEntry;
+use App\Filament\Dashboard\Resources\TimeEntries\Pages\CreateTimeEntry;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Livewire\Livewire;

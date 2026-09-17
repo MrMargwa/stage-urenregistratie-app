@@ -175,7 +175,7 @@ Nieuw sinds deze versie:
 
 Op het gratis Railway-plan slaapt de container na een tijd zonder verkeer (scale-to-zero).
 De eerste request na het opstarten kan daardoor een `500` geven. Dit lossen we op met een
-client-side scriptje (`public/js/keepalive.js`, geïnjecteerd via de AdminPanelProvider) dat drie dingen doet:
+client-side scriptje (`public/js/keepalive.js`, geïnjecteerd via de DashboardPanelProvider) dat drie dingen doet:
 
 1. **Keepalive** — zolang de site in je browser open staat, verstuurt de pagina elke 3 minuten
    een klein GET-request naar `/up` (de Laravel-healthroute). Railway ziet daardoor constant verkeer
@@ -193,6 +193,10 @@ client-side scriptje (`public/js/keepalive.js`, geïnjecteerd via de AdminPanelP
    - wordt er automatisch nog 2× opnieuw geprobeerd,
    - daarna verschijnt er een knop **"Opnieuw proberen"**.
 
+> ℹ️ De serverside pagina **"De server wordt wakker"** (`resources/views/errors/500.blade.php`)
+> wordt **alleen in productie** getoond. Lokaal (of in elke omgeving waar `APP_ENV` ≠ `production`)
+> zie je de normale Laravel-foutpagina met de echte oorzaak.
+
 > 💡 **Cold-start 100% voorkomen (gratis)?** Zolang *niemand* de site open heeft, kan een gratis
 > platform de container nog steeds laten slapen — dan verhelp je de eerste-laat-ontwaken niet via de
 > browser. Installeer dan een **gratis uptime-monitor** (bijv. UptimeRobot, 50 monitors gratis) die
@@ -200,7 +204,7 @@ client-side scriptje (`public/js/keepalive.js`, geïnjecteerd via de AdminPanelP
 > container nooit meer, ook 's nachts.
 
 > ⚠️ **Cache-busting:** nginx serveert `.js`-bestanden met `30d, immutable`. Pas je `keepalive.js`
-> aan, bump dan de versie in `AdminPanelProvider.php` (nu `?v=1`) zodat browsers de nieuwe versie
+> aan, bump dan de versie in `DashboardPanelProvider.php` (nu `?v=3`) zodat browsers de nieuwe versie
 > ophalen.
 
 ## Troubleshooting

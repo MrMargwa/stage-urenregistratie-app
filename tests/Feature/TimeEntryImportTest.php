@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Admin\Resources\TimeEntries\Pages\ListTimeEntries;
+use App\Filament\Dashboard\Resources\TimeEntries\Pages\ListTimeEntries;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Services\TimeEntryImporter;

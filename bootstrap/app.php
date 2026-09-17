@@ -38,4 +38,22 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return redirect()->guest('/dashboard/login');
         });
+
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if ($e instanceof NotFoundHttpException || $e instanceof AuthenticationException) {
+                return null;
+            }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                return null;
+            }
+            if ($request->expectsJson() || $request->is('livewire/*')) {
+                return null;
+            }
+
+            if (app()->environment('production')) {
+                return response()->view('errors.500', [], 500);
+            }
+
+            return null;
+        });
     })->create();

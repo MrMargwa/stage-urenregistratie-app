@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Admin\Pages\Settings;
+use App\Filament\Dashboard\Pages\Settings;
 use App\Models\User;
 use Livewire\Livewire;
 

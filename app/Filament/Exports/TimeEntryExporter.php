@@ -56,10 +56,13 @@ class TimeEntryExporter extends Exporter
 
     /**
      * Haalt de gekozen UI-kleur van de gebruiker op.
+     *
+     * De ui-switcher plugin slaat voorkeuren plat op ('ui.color' als één
+     * sleutel), dus lezen we ook zo en niet als geneste 'ui.color'.
      */
     protected function getUiColor(): string
     {
-        return data_get($this->export->user, 'ui_preferences.ui.color', '#6366f1');
+        return $this->export->user?->getUiPreference('ui.color', '#6366f1') ?? '#6366f1';
     }
 
     /**
@@ -113,26 +116,23 @@ class TimeEntryExporter extends Exporter
     }
 
     /**
-     * Styling voor alle data-rijen.
+     * Styling voor alle data-rijen: zwarte tekst, geen achtergrond.
+     * Alleen de kopregel krijgt de accentkleur mee (zie getXlsxHeaderCellStyle).
      */
     public function getXlsxCellStyle(): ?Style
     {
-        [$red, $green, $blue] = $this->getUiColorRgb();
-
         return (new Style)
-            ->setFontColor(
-                Color::rgb($red, $green, $blue)
-            )
+            ->setFontColor(Color::BLACK)
             ->setShouldWrapText(false)
             ->setCellVerticalAlignment(CellVerticalAlignment::CENTER);
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Je export is klaar, '.$export->successful_rows.' rijen geëxporteerd.';
+        $body = 'Je export is klaar. '.$export->successful_rows.' rijen geëxporteerd.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' '.$failedRowsCount.' rijen zijn mislukt.';
+            $body .= ' '.$failedRowsCount.' rijen konden niet worden geëxporteerd.';
         }
 
         return $body;

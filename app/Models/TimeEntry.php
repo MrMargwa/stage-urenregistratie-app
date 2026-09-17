@@ -96,7 +96,7 @@ class TimeEntry extends Model
 
                 if ($end->lt($start)) {
                     throw ValidationException::withMessages([
-                        'end_time' => 'De eindtijd kan niet voor de begintijd liggen.',
+                        'end_time' => 'De eindtijd kan niet vóór de begintijd liggen.',
                     ]);
                 }
 

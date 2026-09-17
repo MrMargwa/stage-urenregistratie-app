@@ -52,7 +52,7 @@ De controle zit in `TimeEntry::boot()` (modelniveau), zodat elke schrijfroute
 
 ### 2.6 Thema
 Het webthema (donker/licht/systeem) en een accentkleur worden ingesteld via de
-**Filament UI Switcher** (`FilamentUiSwitcherPlugin` in `AdminPanelProvider`), niet via
+**Filament UI Switcher** (`FilamentUiSwitcherPlugin` in `DashboardPanelProvider`), niet via
 een eigen controller. De keuze wordt per gebruiker bewaard in `ui_preferences` (JSON).
 
 ### 2.7 Gebruikersbeheer (alleen admin)
@@ -227,7 +227,7 @@ Database
 app/
 ├── Enums/                          Role
 ├── Filament/
-│   ├── Admin/
+│   ├── Dashboard/
 │   │   ├── Pages/                  Dashboard, Settings
 │   │   ├── Resources/
 │   │   │   ├── TimeEntries/        Resource + Schemas + Tables
@@ -238,7 +238,7 @@ app/
 ├── Http/Controllers/               HomeController (alleen)
 ├── Models/                         User, TimeEntry
 ├── Policies/                       UserPolicy, TimeEntryPolicy
-└── Providers/Filament/             AdminPanelProvider
+└── Providers/Filament/             DashboardPanelProvider
 database/
 ├── factories/, migrations/, seeders/
 config/seeding.php                  admin-account via SEED_ADMIN_* env
@@ -294,7 +294,7 @@ Filament (resource- en paginadetection). Er is géén eigen `/theme`-route meer.
 
 ---
 
-## 11. Instellingen (`app/Filament/Admin/Pages/Settings.php`)
+## 11. Instellingen (`app/Filament/Dashboard/Pages/Settings.php`)
 
 - Sectie **Account**: naam, e-mail, nieuw wachtwoord (leeg = ongewijzigd).
 - Sectie **Stage**: `target_hours` (min 1, max 9999) voor de voortgangsbalk.
@@ -305,7 +305,7 @@ pagina.
 
 ---
 
-## 12. Dashboard (`app/Filament/Admin/Pages/Dashboard.php`)
+## 12. Dashboard (`app/Filament/Dashboard/Pages/Dashboard.php`)
 
 - Toont de gekozen week (weeklabel + datumbereik), navigatiepijlen en
   "Huidige week".
@@ -388,11 +388,11 @@ na `migrate --force`.
 
 1. `README.md` — intro + lokaal opstarten
 2. `routes/web.php` — de enige handmatige route
-3. `app/Providers/Filament/AdminPanelProvider.php` — panel + plugins
+3. `app/Providers/Filament/DashboardPanelProvider.php` — panel + plugins
 4. `app/Models/User.php`, `app/Models/TimeEntry.php` — domein
 5. `app/Policies/*` — autorisatie
 6. `app/Helpers/DurationHelper.php` — duurberekening
-7. `app/Filament/Admin/Resources/TimeEntries/` — de kern-resource
+7. `app/Filament/Dashboard/Resources/TimeEntries/` — de kern-resource
 8. `database/migrations/` — schema-geschiedenis
 9. `DEPLOY.md` — productie
 10. `TESTCHECKLIST.md` — handmatige tests

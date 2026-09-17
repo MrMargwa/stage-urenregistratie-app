@@ -12,6 +12,10 @@
     var SUBMIT_METHODS = ['create', 'save', 'createAnother'];
     var FIELD_SELECTOR = 'input[wire\\:model], textarea[wire\\:model], select[wire\\:model]';
 
+    try {
+        window.sessionStorage.removeItem('stageuren.errorRetries');
+    } catch (error) {}
+
     function pathOf() {
         return window.location.pathname;
     }
