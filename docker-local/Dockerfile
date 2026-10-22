@@ -1,4 +1,6 @@
-FROM php:8.4-fpm
+# Zelfde patchversie als productie (zie /Dockerfile). Zo loop je lokaal niet
+# tegen bugs aan die online al gefixt zijn, of andersom.
+FROM php:8.4.27-fpm
 
 # Systeem dependencies
 RUN apt-get update && apt-get install -y \

@@ -242,7 +242,7 @@ app/
 database/
 ├── factories/, migrations/, seeders/
 config/seeding.php                  admin-account via SEED_ADMIN_* env
-railway/                            Nixpacks-config + pre-deploy.sh
+railway/                            pre-deploy.sh (migraties + caches)
 ```
 
 ---
@@ -356,8 +356,10 @@ na `migrate --force`.
 ## 15. Deployment & omgeving
 
 - **Hosting:** Railway, automatische deploy bij elke push naar `main`.
-- **Build:** Nixpacks (`nixpacks.toml`) → PHP 8.4 + intl/redis-extensies,
-  `composer install --no-dev`, `npm ci && npm run build`, serving via Nginx + PHP-FPM.
+- **Build:** Docker (`Dockerfile`, builder `DOCKERFILE` in `railway.json`) → PHP 8.4.27
+  met intl/zip/pdo_pgsql/opcache/redis-extensies, `composer install --no-dev`,
+  `npm ci && npm run build` in een aparte bouwfase, serving via Nginx + PHP-FPM.
+  De exacte PHP-versie staat in `ARG PHP_VERSION`; patch = dat getal ophogen.
 - **Database:** PostgreSQL (productie), MySQL (lokaal Docker), SQLite (tests).
 - **Cache/sessies:** Redis (optioneel) of `database`; default CACHE/SESSION/LOGGING
   staan klaar in `DEPLOY.md`.

@@ -4,7 +4,7 @@ Deze app draait online op Railway met twee services in één project:
 
 | Service | Wat het doet | Kosten |
 |---|---|---|
-| **App** (PHP 8.4 via Nixpacks) | host de Laravel-app via Nginx + PHP-FPM | binnen je $5-trial, daarna $1/maand (Free-plan) |
+| **App** (PHP 8.4.27 via `Dockerfile`) | host de Laravel-app via Nginx + PHP-FPM | binnen je $5-trial, daarna $1/maand (Free-plan) |
 | **PostgreSQL** | beheerde database (first-party Railway-service, direct in het menu) | idem |
 | **Redis** (aanbevolen, optioneel) | in-memory cache + sessions + exports-queue | binnen je $5-trial |
 
@@ -49,7 +49,7 @@ Open de **app-service** (niet de database!) → tab **Variables** en voeg toe:
 > 💡 **Waarom Redis?** Zonder Redis slaat de app cache en sessions op in PostgreSQL. Elke pagina-laad is dan meerdere extra DB-rondes over het netwerk (trager). Met Redis zijn dat snelle in-memory reads. Lokaal merk je het verschil niet (MySQL op localhost), online wél — dit is naast Nginx/PHP-FPM de grootste snelheidswinst. Wil je het eenvoudig houden, dan volstaat `database` ook prima.
 >
 > 🚀 **Gratis snelheidswinsten zonder Redis** (staan al in deze repo):
-> 1. **OPcache** — ingeschakeld via `nixpacks.toml` (`php84Extensions.opcache`). PHP hercompiled op die manier geen code-bundels bij elke request. Dit is de grootste gratis PHP-winst op Railway.
+> 1. **OPcache** — ingeschakeld in de productie-image (`Dockerfile`: `docker-php-ext-install ... opcache`). PHP hercompiled op die manier geen code-bundels bij elke request. Dit is de grootste gratis PHP-winst op Railway.
 > 2. **Gecachte config/routes/views** — draait al in `railway/pre-deploy.sh`.
 > 3. **`LOG_CHANNEL=stderr`** — zet dit in Railway; file-logging is vluchtig en onzichtbaar in de Railway-logs.
 > 4. **Minder DB-queries per request** — het dashboard laadt nu de week-totalen efficiënter, en admin-views eager-loaden gerelateerde records (geen N+1).
@@ -66,7 +66,7 @@ Elke wijziging in Variables triggert automatisch een herstart.
      Dit is een **service-referentie**: Railway vult automatisch de interne URL van je Redis-service in.
      Niet zelf de URL in elkaar zetten, gewoon deze referentie gebruiken.
 4. Zet `CACHE_STORE=redis` (snelheidswinst) en laat `SESSION_DRIVER=database` staan (sessies blijven dan bewaard bij een slaapstand/restart).
-5. De build in `nixpacks.toml` installeert al `php84Extensions.redis`, dus niets extra's nodig in code.
+5. De productie-image (`Dockerfile`) installeert al de redis-extensie, dus niets extra's nodig in code.
 
 **Werkt de verbinding?** In de runtime-logs (of via `railway run`) kun je testen met:
 
@@ -96,13 +96,22 @@ Geen Redis (alles via PostgreSQL) werkt ook prima — het is puur een snelheidso
 
 ## Stap 5 — Eerste build controleren
 
-De build gebruikt `nixpacks.toml` uit de repo:
+De build gebruikt de `Dockerfile` in de root van de repo (zie `railway.json`, builder `DOCKERFILE`):
 
-- PHP 8.4 mét de `intl`- en `redis`-extensies (intl is verplicht voor Filament, redis alleen nodig als je de Redis-service gebruikt)
-- `composer install --no-dev`
-- `npm ci && npm run build` (Vite-assets)
-- **Serving:** de app draait via **Nginx + PHP-FPM** (het native startcommando van de Nixpacks-PHP-provider, meerdere PHP-processen) — niet meer via de single-threaded `php artisan serve`.
+- **PHP 8.4.27** met de extensies `intl`, `zip`, `pdo_pgsql`, `opcache` en `redis` (intl is verplicht voor Filament, zip voor de Excel-export, redis alleen nodig als je de Redis-service gebruikt)
+- `composer install --no-dev` + `php artisan package:discover`
+- `npm ci && npm run build` (Vite-assets) in een aparte bouwfase; Node gaat niet mee de runtime-image in
+- **Serving:** de app draait via **Nginx + PHP-FPM** (zie `start.sh`) — niet via de single-threaded `php artisan serve`.
 - Migraties + admin-seeding draaien in de **pre-deploy-stap** (`railway/pre-deploy.sh`, via `preDeployCommand` in `railway.json`), met wachtlus tot de database online is.
+
+> 🔐 **PHP patchen (belangrijk bij security-releases).** De PHP-versie staat in de `ARG PHP_VERSION` bovenin de `Dockerfile`. Upgraden = dat getal ophogen (bijv. `8.4.28`), committen, pushen. Zo weet je exact welke patchversie online staat — en omdat `expose_php` uit staat (zie `php-fpm.conf`), verraadt de app die versie niet meer aan buitenstaanders. Controleren doe je zo:
+>
+> ```bash
+> # Lokaal: welke versie zit er in de image?
+> docker build -q -t check-php . && docker run --rm check-php php -v
+> ```
+>
+> Online zie je dezelfde regel in de **buildlogs** van Railway (de `FROM php:...`-stap bovenaan).
 
 Bouwt het mis? Tab **Deployments** → klik op de build → logs lezen.
 
@@ -215,13 +224,13 @@ client-side scriptje (`public/js/keepalive.js`, geïnjecteerd via de DashboardPa
 | `500 Internal Server Error` op `/dashboard/time-entries` | De tabel-filters gebruikten MySQL-only functies (`DATE_FORMAT`, `YEARWEEK`) die PostgreSQL niet kent. Gefixt: maanden/weken worden nu in PHP berekend (Carbon) en gefilterd via portabele `whereBetween`-queries in `TimeEntriesTable`. |
 | `500` na een periode zonder bezoekers (slaperige pod) of bij opslaan, en formulier-invoer weg | Cold start van de gratis (scale-to-zero) container + Livewire verliest de form-state. De app heeft nu een keepalive (`/up`-ping), een localStorage-concept en een automatische retry met "Opnieuw proberen"-knop — zie de sectie **Gratis oplossing voor cold-start & dataverlies** hierboven. |
 | `Application failed to respond` op het domein | **Meestal een port-mismatch.** De app (nginx) luistert op **8000** (= domein **target port**). Heeft Railway een handmatige `PORT`-variabele (bv. `8080`) die afwijkt, dan klopt de luisterpoort nooit. Oplossing: verwijder de handmatige `PORT`-variabele en check dat domein → **target port** = `8000`. Deploy-logs moeten `[start] nginx will listen on 0.0.0.0:8000` tonen. Zie je een crash-loop, check dan de wachtlus-fix hieronder. |
-| Build-log noemt `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert Nixpacks. Staat die er niet in? Zet hem dan handmatig: app-service → **Settings** → **Build** → Builder → **Nixpacks**, en redeploy. |
-| `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Nixpacks koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste (lockfile heeft ≥8.4.1 nodig). Opgelost door `"php": "^8.4"` + install-fase met `--no-dev`. |
-| `does not provide an export named 'styleText'` in de build-fase | Nixpacks gebruikte Node 18, maar Vite 8 vereist Node ≥20.19. Opgelost via `NIXPACKS_NODE_VERSION = '22'` (nixpacks.toml) + `"engines"` in package.json. |
+| Build-log noemt `nixpacks` of `railpack` en faalt op `php >=8.4.1` / `ext-intl missing` | Railway gebruikte de verkeerde builder — `railway.json` in de repo forceert de **Dockerfile**-builder. Staat die er niet in of is de service ooit handmatig op Nixpacks gezet? Zet hem dan: app-service → **Settings** → **Build** → Builder → **Dockerfile**, en redeploy. |
+| `ParseError ... vendor/phpunit/.../Version.php` of setup toont `php83.withExtensions` | Dit was een Nixpacks-probleem: die koos PHP 8.3 doordat `composer.json` `"php": "^8.3"` eiste. Nu bepaalt de `Dockerfile` de versie (`ARG PHP_VERSION`), dus dit kan niet meer gebeuren. |
+| `does not provide an export named 'styleText'` in de build-fase | De Node-versie was te oud (Vite 8 vereist Node ≥20.19). De bouwfase in de `Dockerfile` gebruikt `node:22-bookworm-slim` + `"engines"` in `package.json`, dus dit is opgelost. |
 | `SQLSTATE[HY000] [2054] authentication method unknown [caching_sha2_password]` bij starten | Er staat nog een **MySQL**-service verbonden — de PHP-build (libmariadb) ondersteunt die auth niet. Vervang door PostgreSQL: verwijder de MySQL-service, + New → Database → PostgreSQL, en wijs `DB_URL` naar `${{<servicenaam>.DATABASE_URL}}` met `DB_CONNECTION=pgsql`. |
 | `SQLSTATE[HY000] [2002] Connection refused` of `SQLSTATE[08006] [7] ... database system is starting up` bij starten | Race tussen app- en DB-start (database nog niet online). De pre-deploy-stap (`railway/pre-deploy.sh`) heeft een wachtlus (`until php artisan migrate --force; do sleep 5; done`) die dit opvangt — zie je het nog, check dan of de nieuwste deployment de lus bevat. |
-| `could not find driver` of `Call to undefined function pg_connect()` bij migreren | De `pdo_pgsql`-extensie ontbreekt in de build — check of `nixpacks.toml` `php84Extensions.pdo_pgsql` in de setup-fase heeft staan en trigger een redeploy (**Deployments** → ⋯ → Redeploy). |
-| `Class "Filament\PanelProvider" not found` of intl-fout | Build gebruikte geen `nixpacks.toml` — check of het bestand gepusht is en trigger een redeploy (**Deployments** → ⋯ → Redeploy). |
+| `could not find driver` of `Call to undefined function pg_connect()` bij migreren | De `pdo_pgsql`-extensie ontbreekt — check de extensielijst in de `Dockerfile` (`docker-php-ext-install ... pdo_pgsql`) en trigger een redeploy (**Deployments** → ⋯ → Redeploy). |
+| `Class "Filament\PanelProvider" not found` of intl-fout | De build gebruikte niet de `Dockerfile` (of `intl` ontbreekt in de extensielijst). Check `railway.json` (`"builder": "DOCKERFILE"`) en de buildlogs. |
 | `No application encryption key has been specified` | `APP_KEY` ontbreekt — stap 2. |
 | `Connection refused` / SQLSTATE[HY000] [2002] | `DB_URL`-referentie klopt niet met de servicenaam van de database — stap 2, let op `${{...}}`. |
 | Witte pagina / CSS mist | Vite-build gefaald — deployment-logs checken. |
